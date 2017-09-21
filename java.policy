@@ -1,0 +1,5 @@
+grant codeBase "file:/Users/justin/workspace/newComp512/" {
+    permission java.security.AllPermission;
+};
+
+
