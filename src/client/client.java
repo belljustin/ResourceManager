@@ -19,7 +19,7 @@ public class Client
         Client obj = new Client();
         BufferedReader stdin = new BufferedReader(new InputStreamReader(System.in));
         String command = "";
-        Vector arguments  = new Vector();
+        Vector<String> arguments  = new Vector<String>();
         int Id, Cid;
         int flightNum;
         int flightPrice;
@@ -521,7 +521,7 @@ public class Client
             try{
             Id = obj.getInt(arguments.elementAt(1));
             int customer = obj.getInt(arguments.elementAt(2));
-            Vector flightNumbers = new Vector();
+            Vector<String> flightNumbers = new Vector<String>();
             for(int i=0;i<arguments.size()-6;i++)
                 flightNumbers.addElement(arguments.elementAt(3+i));
             location = obj.getString(arguments.elementAt(arguments.size()-3));
@@ -558,7 +558,7 @@ public class Client
             try{
             Id = obj.getInt(arguments.elementAt(1));
             Cid = obj.getInt(arguments.elementAt(2));
-            boolean customer=rm.newCustomer(Id,Cid);
+            rm.newCustomer(Id,Cid);
             System.out.println("new customer id:"+Cid);
             }
             catch(Exception e){
@@ -575,9 +575,9 @@ public class Client
         }//end of while(true)
     }
         
-    public Vector parse(String command)
+    public Vector<String> parse(String command)
     {
-    Vector arguments = new Vector();
+    Vector<String> arguments = new Vector<String>();
     StringTokenizer tokenizer = new StringTokenizer(command,",");
     String argument ="";
     while (tokenizer.hasMoreTokens())
