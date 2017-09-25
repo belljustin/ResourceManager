@@ -4,7 +4,7 @@
 //
 package server.ResImpl;
 
-import server.ResInterface.*;
+import server.ResInterface.ResourceManager;
 
 import java.util.*;
 
