@@ -357,25 +357,37 @@ public class MiddleWare implements ResourceManager
 
     // return a bill
     public String queryCustomerInfo(int id, int customerID)
-        throws RemoteException
-    {
-        Trace.info("RM::queryCustomerInfo(" + id + ", " + customerID + ") called" );
-        Customer cust = (Customer) readData( id, Customer.getKey(customerID) );
-        if ( cust == null ) {
-            Trace.warn("RM::queryCustomerInfo(" + id + ", " + customerID + ") failed--customer doesn't exist" );
-            return "";   // NOTE: don't change this--WC counts on this value indicating a customer does not exist...
-        } else {
-                String s = cust.printBill();
-                Trace.info("RM::queryCustomerInfo(" + id + ", " + customerID + "), bill follows..." );
-                System.out.println( s );
-                return s;
-        } // if
+        throws RemoteException{
+//    {
+//        Trace.info("RM::queryCustomerInfo(" + id + ", " + customerID + ") called" );
+//        Customer cust = (Customer) readData( id, Customer.getKey(customerID) );
+//        if ( cust == null ) {
+//            Trace.warn("RM::queryCustomerInfo(" + id + ", " + customerID + ") failed--customer doesn't exist" );
+//            return "";   // NOTE: don't change this--WC counts on this value indicating a customer does not exist...
+//        } else {
+//                String s = cust.printBill();
+//                Trace.info("RM::queryCustomerInfo(" + id + ", " + customerID + "), bill follows..." );
+//                System.out.println( s );
+//                return s;
+//        } // if
+        String A = hotelRM.queryCustomerInfo(id, customerID);
+    	String B = carRM.queryCustomerInfo(id, customerID);
+    	String C = flightRM.queryCustomerInfo(id, customerID);
+    	A = ("Hotel: " + A + "\n");
+    	B = ("Car: " + B + "\n");
+    	C = ("Flight: " + C + "\n");
+    	String toReturn = A+B+C;
+    	if(toReturn==null || toReturn.isEmpty()){
+    		Trace.warn("RM::queryCustomerInfo(" + id + ", " + customerID + ") failed--customer doesn't exist" );
+    		toReturn = "\n RM::queryCustomerInfo(" + id + ", " + customerID + ") failed--customer doesn't exist" ;
+    	}
+    	return ("\n" + toReturn);
     }
 
     // customer functions
     // new customer just returns a unique customer identifier
     
-    public int newCustomer(int id)
+    public synchronized int newCustomer(int id)
         throws RemoteException
     {
         Trace.info("INFO: RM::newCustomer(" + id + ") called" );
@@ -386,11 +398,14 @@ public class MiddleWare implements ResourceManager
         Customer cust = new Customer( cid );
         writeData( id, cust.getKey(), cust );
         Trace.info("RM::newCustomer(" + cid + ") returns ID=" + cid );
+        hotelRM.newCustomer(id, cid);
+        carRM.newCustomer(id, cid);
+        flightRM.newCustomer(id, cid);
         return cid;
     }
 
     // I opted to pass in customerID instead. This makes testing easier
-    public boolean newCustomer(int id, int customerID )
+    public synchronized boolean newCustomer(int id, int customerID )
         throws RemoteException
     {
         Trace.info("INFO: RM::newCustomer(" + id + ", " + customerID + ") called" );
@@ -399,6 +414,9 @@ public class MiddleWare implements ResourceManager
             cust = new Customer(customerID);
             writeData( id, cust.getKey(), cust );
             Trace.info("INFO: RM::newCustomer(" + id + ", " + customerID + ") created a new customer" );
+            hotelRM.newCustomer(id, customerID);
+            carRM.newCustomer(id, customerID);
+            flightRM.newCustomer(id, customerID);
             return true;
         } else {
             Trace.info("INFO: RM::newCustomer(" + id + ", " + customerID + ") failed--customer already exists");
@@ -408,7 +426,7 @@ public class MiddleWare implements ResourceManager
 
 
     // Deletes customer from the database. 
-    public boolean deleteCustomer(int id, int customerID)
+    public synchronized boolean deleteCustomer(int id, int customerID)
         throws RemoteException
     {
         Trace.info("RM::deleteCustomer(" + id + ", " + customerID + ") called" );
@@ -433,6 +451,9 @@ public class MiddleWare implements ResourceManager
             removeData(id, cust.getKey());
             
             Trace.info("RM::deleteCustomer(" + id + ", " + customerID + ") succeeded" );
+            hotelRM.deleteCustomer(id, customerID);
+            carRM.deleteCustomer(id, customerID);
+            flightRM.deleteCustomer(id, customerID);
             return true;
         } // if
     }
