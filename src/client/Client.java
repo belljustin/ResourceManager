@@ -53,7 +53,8 @@ public class Client
             // get a reference to the rmiregistry
             Registry registry = LocateRegistry.getRegistry(server, port);
             // get the proxy and the remote reference by rmiregistry lookup
-            rm = (ResourceManager) registry.lookup("PG12ResourceManager");
+           // rm = (ResourceManager) registry.lookup("PG12ResourceManager");
+            rm = (ResourceManager) registry.lookup("PG12MiddleWare");
             if(rm!=null)
             {
                 System.out.println("Successful");

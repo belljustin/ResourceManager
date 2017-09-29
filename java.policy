@@ -1,4 +1,4 @@
-grant codeBase "file:/Users/justin/workspace/comp512/ResourceManager/bin/-" {
+grant codeBase "file:/home/2015/rpradh3/COMP512/ResourceManager/bin/-" {
     permission java.security.AllPermission;
 };
 
