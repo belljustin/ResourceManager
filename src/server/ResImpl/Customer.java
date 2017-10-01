@@ -7,7 +7,7 @@ package server.ResImpl;
 import java.util.*;
 
 public class Customer extends RMItem {
-  Customer(int id) {
+  public Customer(int id) {
     super();
     m_Reservations = new RMHashtable();
     m_nID = id;
