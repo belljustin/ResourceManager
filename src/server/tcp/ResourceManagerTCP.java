@@ -1,17 +1,11 @@
 package server.tcp;
 
-import java.rmi.RemoteException;
 import java.util.Calendar;
 import java.util.Enumeration;
 import java.util.StringTokenizer;
 import java.util.Vector;
 
-import server.ResImpl.Customer;
-import server.ResImpl.RMHashtable;
-import server.ResImpl.RMItem;
-import server.ResImpl.ReservableItem;
-import server.ResImpl.ReservedItem;
-import server.ResImpl.Trace;
+import server.ResImpl.*;
 
 public class ResourceManagerTCP {
 	protected RMHashtable m_itemHT = new RMHashtable();
@@ -122,9 +116,7 @@ public class ResourceManagerTCP {
     // Returns data structure containing customer reservation info. Returns null if the
     //  customer doesn't exist. Returns empty RMHashtable if customer exists but has no
     //  reservations.
-    public RMHashtable getCustomerReservations(int id, int customerID)
-        throws RemoteException
-    {
+    public RMHashtable getCustomerReservations(int id, int customerID) {
         Trace.info("RM::getCustomerReservations(" + id + ", " + customerID + ") called" );
         Customer cust = (Customer) readData( id, Customer.getKey(customerID) );
         if ( cust == null ) {
@@ -136,9 +128,7 @@ public class ResourceManagerTCP {
     }
 
     // return a bill
-    public String queryCustomerInfo(int id, int customerID)
-        throws RemoteException
-    {
+    public String queryCustomerInfo(int id, int customerID) {
         Trace.info("RM::queryCustomerInfo(" + id + ", " + customerID + ") called" );
         Customer cust = (Customer) readData( id, Customer.getKey(customerID) );
         if ( cust == null ) {
@@ -155,9 +145,7 @@ public class ResourceManagerTCP {
     // customer functions
     // new customer just returns a unique customer identifier
     
-    public int newCustomer(int id)
-        throws RemoteException
-    {
+    public int newCustomer(int id) {
         Trace.info("INFO: RM::newCustomer(" + id + ") called" );
         // Generate a globally unique ID for the new customer
         int cid = Integer.parseInt( String.valueOf(id) +
@@ -170,9 +158,7 @@ public class ResourceManagerTCP {
     }
 
     // I opted to pass in customerID instead. This makes testing easier
-    public boolean newCustomer(int id, int customerID )
-        throws RemoteException
-    {
+    public boolean newCustomer(int id, int customerID ) {
         Trace.info("INFO: RM::newCustomer(" + id + ", " + customerID + ") called" );
         Customer cust = (Customer) readData( id, Customer.getKey(customerID) );
         if ( cust == null ) {
@@ -188,9 +174,7 @@ public class ResourceManagerTCP {
 
 
     // Deletes customer from the database. 
-    public boolean deleteCustomer(int id, int customerID)
-        throws RemoteException
-    {
+    public boolean deleteCustomer(int id, int customerID) {
         Trace.info("RM::deleteCustomer(" + id + ", " + customerID + ") called" );
         Customer cust = (Customer) readData( id, Customer.getKey(customerID) );
         if ( cust == null ) {
