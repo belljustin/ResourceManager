@@ -82,60 +82,60 @@ public class CarManagerTCP extends ResourceManagerTCP {
 			try {
 				out = new PrintWriter(socket.getOutputStream(), true);
 				in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-				inputLine = in.readLine();
+				while((inputLine = in.readLine()) != null) {
+					Vector<String> arguments = parse(inputLine);
+
+					String msg = "";
+					try {
+						switch (arguments.elementAt(0)) {
+						case "newcar":
+							Id = getInt(arguments.elementAt(1));
+							location = getString(arguments.elementAt(2));
+							numCars = getInt(arguments.elementAt(3));
+							price = getInt(arguments.elementAt(4));
+							msg = Boolean.toString(addCars(Id, location, numCars, price));
+							break;
+
+						case "deletecar":
+							Id = getInt(arguments.elementAt(1));
+							location = getString(arguments.elementAt(2));
+							msg = Boolean.toString(deleteCars(Id, location));
+							break;
+
+						case "querycar":
+							Id = getInt(arguments.elementAt(1));
+							location = getString(arguments.elementAt(2));
+							msg = Integer.toString(queryCars(Id, location));
+							break;
+
+						case "querycarprice":
+							Id = getInt(arguments.elementAt(1));
+							location = getString(arguments.elementAt(2));
+							msg = Integer.toString(queryCarsPrice(Id, location));
+							break;
+
+						case "reservecar":
+							Id = getInt(arguments.elementAt(1));
+							int customer = getInt(arguments.elementAt(2));
+							location = getString(arguments.elementAt(3));
+							msg = Boolean.toString(reserveCar(Id, customer, location));
+							break;
+
+						default:
+							msg = customerCases(arguments);
+						}
+
+						out.println(msg);
+
+					} catch (Exception e) {
+						// TODO: Handle this exception
+						e.printStackTrace();
+					}
+				}
 			} catch (IOException e) {
 				System.out.println("Exception caught when trying to listen on port");
 				System.out.println(e.getMessage());
 				return;
-			}
-
-			Vector<String> arguments = parse(inputLine);
-
-			String msg = "";
-			try {
-				switch (arguments.elementAt(0)) {
-				case "newcar":
-					Id = getInt(arguments.elementAt(1));
-					location = getString(arguments.elementAt(2));
-					numCars = getInt(arguments.elementAt(3));
-					price = getInt(arguments.elementAt(4));
-					msg = Boolean.toString(addCars(Id, location, numCars, price));
-					break;
-
-				case "deletecar":
-					Id = getInt(arguments.elementAt(1));
-					location = getString(arguments.elementAt(2));
-					msg = Boolean.toString(deleteCars(Id, location));
-					break;
-
-				case "querycar":
-					Id = getInt(arguments.elementAt(1));
-					location = getString(arguments.elementAt(2));
-					msg = Integer.toString(queryCars(Id, location));
-					break;
-
-				case "querycarprice":
-					Id = getInt(arguments.elementAt(1));
-					location = getString(arguments.elementAt(2));
-					msg = Integer.toString(queryCarsPrice(Id, location));
-					break;
-
-				case "reservecar":
-					Id = getInt(arguments.elementAt(1));
-					int customer = getInt(arguments.elementAt(2));
-					location = getString(arguments.elementAt(3));
-					msg = Boolean.toString(reserveCar(Id, customer, location));
-					break;
-
-				default:
-					msg = customerCases(arguments);
-				}
-
-				out.println(msg);
-
-			} catch (Exception e) {
-				// TODO: Handle this exception
-				e.printStackTrace();
 			}
 
 			try {
