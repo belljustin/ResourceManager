@@ -9,7 +9,6 @@ import java.rmi.registry.Registry;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
-import java.rmi.RMISecurityManager;
 import java.io.*;
 import java.net.Socket;
 import java.net.ServerSocket;
@@ -40,17 +39,14 @@ public class TCPMiddleWare implements ResourceManager
         String server = "localhost";
         int port = 1099;
 
-        if (args.length == 1) {
-            server = server + ":" + args[0];
-            port = Integer.parseInt(args[0]);
-        } else if (args.length != 0 &&  args.length != 1) {
+        if (args.length != 3) {
             System.err.println ("Wrong usage");
-            System.out.println("Usage: java server.ResourceManagerImpl [port]");
+            System.out.println("Usage: java server.TCPMiddleWare <carPort>" +
+                               "<hotelPort> <flightPort>");
             System.exit(1);
         }
         
             TCPMiddleWare middleWare = new TCPMiddleWare(Integer.parseInt(args[0]), Integer.parseInt(args[1]), Integer.parseInt(args[2]));
-            middleWare.attachRegistry(port,middleWare);
             try {
             	middleWare.runServerThread();
             } catch (Exception e) {
@@ -62,42 +58,16 @@ public class TCPMiddleWare implements ResourceManager
     }
     
     public void runServerThread() throws IOException {
-    	ServerSocket serverSocket = new ServerSocket(1099);
+    	ServerSocket serverSocket = new ServerSocket(8080);
     	System.out.println("Middleware is ready...");
     	ExecutorService cachedPool = Executors.newCachedThreadPool();
     	while(true){
     		Socket socket = serverSocket.accept();
+    		Trace.info("Client accepted");
     		cachedPool.submit(new TCPMiddleWareThread(socket,"localhost", "localhost", "localhost", carPort, flightPort, hotelPort));
     		
     	}
     }
-    
-    public void attachRegistry(int port, TCPMiddleWare mw){
-        try {
-            // create a new Server object
-            
-            // dynamically generate the stub (client proxy)
-            rm = (ResourceManager) UnicastRemoteObject.exportObject(mw, 0);
-
-            // Bind the remote object's stub in the registry
-            registry = LocateRegistry.getRegistry(port);
-            registry.rebind("PG12MiddleWare", rm);
-            
-            
-
-            System.err.println("MiddleWare ready");
-        } catch (Exception e) {
-            System.err.println("MiddleWare exception: " + e.toString());
-            e.printStackTrace();
-        }
-
-        // Create and install a security manager
-        if (System.getSecurityManager() == null) {
-            System.setSecurityManager(new RMISecurityManager());
-        }
-    	
-    }
-    
     
     public void connectRM() throws Exception{
        	if(registry == null){

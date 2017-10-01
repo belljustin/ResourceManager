@@ -19,7 +19,7 @@ import java.net.Socket;
 public class CarManagerTCP extends ResourceManagerTCP {
   private ServerSocket serverSocket = null;
 
-  private ExecutorService executorService = Executors.newFixedThreadPool(10);
+  private ExecutorService executorService = Executors.newCachedThreadPool();
 
   public static void main(String args[]) {
     int port = 1099;
@@ -79,7 +79,12 @@ public class CarManagerTCP extends ResourceManagerTCP {
       try {
         out = new PrintWriter(socket.getOutputStream(), true);
         in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        
+        Trace.info("" + socket.getLocalPort());
+        
         while ((inputLine = in.readLine()) != null) {
+          Trace.info("Recieved command: " + inputLine);
+
           Vector<String> arguments = parse(inputLine);
 
           String msg = "";
@@ -126,13 +131,17 @@ public class CarManagerTCP extends ResourceManagerTCP {
             e.printStackTrace();
           }
 
+          Trace.info("Writing msg: " + msg);
           out.println(msg);
+          Trace.info("Wrote msg: " + msg);
         }
       } catch (IOException e) {
         System.out.println("Exception caught when trying to read or write on socket");
         System.out.println(e.getMessage());
         return;
       }
+
+      Trace.info("Closing connection to client");
 
       try {
         socket.close();
