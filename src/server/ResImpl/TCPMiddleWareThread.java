@@ -154,10 +154,12 @@ public class TCPMiddleWareThread implements Runnable{
 			return 1;
 		} else if (methodName.compareToIgnoreCase("newroom") == 0 || methodName.compareToIgnoreCase("deleteroom") == 0 || methodName.compareToIgnoreCase("queryroom") == 0 || methodName.compareToIgnoreCase("queryroomprice") == 0 || methodName.compareToIgnoreCase("reserveroom") == 0) {
 			return 2;
-		}  else if (methodName.compareToIgnoreCase("newcustomerid")==0 || methodName.compareToIgnoreCase("newcustomer") == 0 || methodName.compareToIgnoreCase("deletecustomer") == 0 || methodName.compareToIgnoreCase("querycustomer") == 0){
+		}  else if (methodName.compareToIgnoreCase("newcustomerid")==0 || methodName.compareToIgnoreCase("newcustomer") == 0 || methodName.compareToIgnoreCase("deletecustomer") == 0){
 			return 3;
 		}  else if (methodName.compareToIgnoreCase("itinerary")==0) {
 			return 4;
+		} else if (methodName.compareToIgnoreCase("querycustomer")==0){
+			return 5;
 		} else {
 			return -1;
 		}
