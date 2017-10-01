@@ -559,7 +559,7 @@ public class TCPClient {
     try {
       getInt(args.elementAt(1));
       String msg = String.join(",", args);
-      int customer = sendAndRecvInt(msg);
+      String customer = sendAndRecvStr(msg);
       System.out.println("new customer id:" + customer);
     } catch (Exception e) {
       System.out.println("EXCEPTION:");
@@ -952,7 +952,9 @@ public class TCPClient {
   public Boolean sendAndRecv(String msg) {
     out.println(msg);
     try {
-      return Boolean.getBoolean(in.readLine());
+    	String s = in.readLine();
+    	return Boolean.parseBoolean(s);
+//      return (in.readLine());
     } catch (IOException e) {
       // TODO Auto-generated catch block
       e.printStackTrace();
@@ -963,7 +965,7 @@ public class TCPClient {
   public int sendAndRecvInt(String msg) {
     out.println(msg);
     try {
-      return Integer.getInteger(in.readLine());
+      return Integer.parseInt(in.readLine());
     } catch (IOException e) {
       // TODO Auto-generated catch block
       e.printStackTrace();

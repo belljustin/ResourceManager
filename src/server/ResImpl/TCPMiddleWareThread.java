@@ -22,6 +22,7 @@ public class TCPMiddleWareThread implements Runnable{
 	int carRMPort;
 	int flightRMPort; 
 	int hotelRMPort;
+	private Socket carRMSocket;
 	TCPMiddleWareThread (Socket socket, String aCarRMHostName, String aHotelRMHostName, String aFlightRMHostName, int aCarRMPort, int aFlightRMPort, int aHotelRMPort) {
 		this.socket= socket;
 		carRMHostName = aCarRMHostName;
@@ -36,18 +37,19 @@ public class TCPMiddleWareThread implements Runnable{
 	public void run() {
 		try { 
 			
-			Socket carRMSocket = new Socket(carRMHostName, carRMPort);
-			PrintWriter outToCarRM = new PrintWriter(carRMSocket.getOutputStream());
+			carRMSocket = new Socket(carRMHostName, carRMPort);
+			PrintWriter outToCarRM = new PrintWriter(carRMSocket.getOutputStream(), true);
 			BufferedReader inFromCarRM = new BufferedReader(new InputStreamReader(carRMSocket.getInputStream()));
+			Trace.info("Connecting to carRM on port: " + carRMSocket.getPort());
 			
 			
 			Socket hotelRMSocket = new Socket(hotelRMHostName, hotelRMPort);
-			PrintWriter outToHotelRM = new PrintWriter(hotelRMSocket.getOutputStream());
+			PrintWriter outToHotelRM = new PrintWriter(hotelRMSocket.getOutputStream(), true);
 			BufferedReader inFromHotelRM = new BufferedReader(new InputStreamReader(hotelRMSocket.getInputStream()));
 			
 			
 			Socket flightRMSocket = new Socket(flightRMHostName, flightRMPort);
-			PrintWriter outToFlightRM = new PrintWriter(flightRMSocket.getOutputStream());
+			PrintWriter outToFlightRM = new PrintWriter(flightRMSocket.getOutputStream(), true);
 			BufferedReader inFromFlightRM = new BufferedReader(new InputStreamReader(flightRMSocket.getInputStream()));
 			
 			
@@ -59,6 +61,7 @@ public class TCPMiddleWareThread implements Runnable{
 			String messageToClient = null;
 				while ((message = inFromClient.readLine())!=null)
 				{
+					Trace.info("Recieved command: " + message);
 					String[] params = message.split(",");
 					String id = params[1];
 					switch(forwardRM(params[0])) {
@@ -67,7 +70,9 @@ public class TCPMiddleWareThread implements Runnable{
 						//forward to Flight RM 
 						break;
 					case 1:
+						Trace.info("Sending command to carRM" + message);
 						messageToClient = sendAndRecvStr(message,outToCarRM, inFromCarRM);
+						Trace.info("Recieved: " + messageToClient);
 						//forward to CarRM
 						break;
 					case 2:
@@ -75,17 +80,25 @@ public class TCPMiddleWareThread implements Runnable{
 						//forward to HotelRM
 						break;
 					case 3:
+						int cid;
 						if (params[0].compareToIgnoreCase("newcustomer")==0){
-							int cid = Integer.parseInt( String.valueOf(id) +
+							cid = Integer.parseInt( String.valueOf(id) +
 	                                String.valueOf(Calendar.getInstance().get(Calendar.MILLISECOND)) +
 	                                String.valueOf( Math.round( Math.random() * 100 + 1 )));
 							message = "newcustomerid," + params[1]+ "," + cid; 
+						} else if(params[0].compareToIgnoreCase("newcustomerid")==0) {
+							cid = Integer.parseInt(params[2]);
+						} else if(params[0].compareToIgnoreCase("deletecustomer")==0) {
+							cid = Integer.parseInt(params[2]);
+						} else{
+							cid = Integer.parseInt(params[2]);
 						}
+					
 						
 						String temp_message_Flight = sendAndRecvStr(message,outToFlightRM, inFromFlightRM);
 						String temp_message_Car = sendAndRecvStr(message, outToCarRM, inFromCarRM);
 						String temp_message_Hotel = sendAndRecvStr(message, outToHotelRM, inFromHotelRM);
-						messageToClient = temp_message_Flight + "\n" +  temp_message_Car + "\n" + temp_message_Hotel;
+						messageToClient = ""+ cid;
 						//forward to FlightRM
 						//forward to CarRM
 						//forward to HotelRM
@@ -134,8 +147,10 @@ public class TCPMiddleWareThread implements Runnable{
 
 			System.out.println("message:"+message);
 			String result="Working!";
-				}
+				Trace.info("Writing message to Client: " + messageToClient);
 				outToClient.println(messageToClient);
+				Trace.info("Wrote message to Client: " + messageToClient);
+				}
 				socket.close();
 			/**
 			**/
@@ -187,6 +202,7 @@ public class TCPMiddleWareThread implements Runnable{
 		  }
 
 		  public String sendAndRecvStr(String msg, PrintWriter out, BufferedReader in) {
+			Trace.info(msg);
 		    out.println(msg);
 		    try {
 		      return in.readLine();
@@ -194,6 +210,7 @@ public class TCPMiddleWareThread implements Runnable{
 		      // TODO Auto-generated catch block
 		      e.printStackTrace();
 		    }
+			Trace.info("Returning null");
 		    return null;
 		  }
 		  
