@@ -136,9 +136,15 @@ public class TCPMiddleWareThread implements Runnable{
 						}
 						
 						messageToClient = Flight_message + "\n Car booking: \n " + Car_message + "\n Hotel booking: \n " + Hotel_message;
-					
-						
 						//do some parsing then forward to right RM
+						break;
+					case 5:
+						String temp_message_Flight_query = sendAndRecvStr(message,outToFlightRM, inFromFlightRM);
+						String temp_message_Car_query = sendAndRecvStr(message, outToCarRM, inFromCarRM);
+						String temp_message_Hotel_query = sendAndRecvStr(message, outToHotelRM, inFromHotelRM);
+						messageToClient = "Flight information: \n" + temp_message_Flight_query + "\n \n" + "Car information: \n" + temp_message_Car_query + "\n \n" + "Hotel Information: \n" + temp_message_Hotel_query;
+						
+						
 					}
 					
 					
