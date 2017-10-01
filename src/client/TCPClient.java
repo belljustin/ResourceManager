@@ -1,9 +1,5 @@
 package client;
 
-import server.ResInterface.*;
-import java.rmi.registry.LocateRegistry;
-import java.rmi.registry.Registry;
-import java.rmi.RemoteException;
 import java.util.*;
 import java.io.*;
 import java.net.Socket;
@@ -799,9 +795,11 @@ public class TCPClient {
     System.out.println("Querying a room price using id: " + args.elementAt(1));
     System.out.println("Room Location: " + args.elementAt(2));
     try {
-      int Id = getInt(args.elementAt(1));
-      String location = getString(args.elementAt(2));
-      int price = rm.queryRoomsPrice(Id, location);
+      getInt(args.elementAt(1));
+      getString(args.elementAt(2));
+      
+      String msg = String.join(",", args);
+      int price = sendAndRecvInt(msg);
       System.out.println("Price of Rooms at this location:" + price);
     } catch (Exception e) {
       System.out.println("EXCEPTION:");
@@ -819,10 +817,12 @@ public class TCPClient {
     System.out.println("Customer id: " + args.elementAt(2));
     System.out.println("Flight number: " + args.elementAt(3));
     try {
-      int Id = getInt(args.elementAt(1));
-      int customer = getInt(args.elementAt(2));
-      int flightNum = getInt(args.elementAt(3));
-      if (rm.reserveFlight(Id, customer, flightNum))
+      getInt(args.elementAt(1));
+      getInt(args.elementAt(2));
+      getInt(args.elementAt(3));
+      
+      String msg = String.join(",", args);
+      if (sendAndRecv(msg))
         System.out.println("Flight Reserved");
       else
         System.out.println("Flight could not be reserved.");
@@ -843,11 +843,12 @@ public class TCPClient {
     System.out.println("Location: " + args.elementAt(3));
 
     try {
-      int Id = getInt(args.elementAt(1));
-      int customer = getInt(args.elementAt(2));
-      String location = getString(args.elementAt(3));
+      getInt(args.elementAt(1));
+      getInt(args.elementAt(2));
+      getString(args.elementAt(3));
 
-      if (rm.reserveCar(Id, customer, location))
+      String msg = String.join(",", args);
+      if (sendAndRecv(msg))
         System.out.println("Car Reserved");
       else
         System.out.println("Car could not be reserved.");
@@ -867,11 +868,12 @@ public class TCPClient {
     System.out.println("Customer id: " + args.elementAt(2));
     System.out.println("Location: " + args.elementAt(3));
     try {
-      int Id = getInt(args.elementAt(1));
-      int customer = getInt(args.elementAt(2));
-      String location = getString(args.elementAt(3));
+      getInt(args.elementAt(1));
+      getInt(args.elementAt(2));
+      getString(args.elementAt(3));
 
-      if (rm.reserveRoom(Id, customer, location))
+      String msg = String.join(",", args);
+      if (sendAndRecv(msg))
         System.out.println("Room Reserved");
       else
         System.out.println("Room could not be reserved.");
@@ -895,16 +897,17 @@ public class TCPClient {
     System.out.println("Car to book?:" + args.elementAt(args.size() - 2));
     System.out.println("Room to book?:" + args.elementAt(args.size() - 1));
     try {
-      int Id = getInt(args.elementAt(1));
-      int customer = getInt(args.elementAt(2));
+      getInt(args.elementAt(1));
+      getInt(args.elementAt(2));
       Vector<String> flightNumbers = new Vector<String>();
       for (int i = 0; i < args.size() - 6; i++)
         flightNumbers.addElement(args.elementAt(3 + i));
-      String location = getString(args.elementAt(args.size() - 3));
-      boolean Car = getBoolean(args.elementAt(args.size() - 2));
-      boolean Room = getBoolean(args.elementAt(args.size() - 1));
+      getString(args.elementAt(args.size() - 3));
+      getBoolean(args.elementAt(args.size() - 2));
+      getBoolean(args.elementAt(args.size() - 1));
 
-      if (rm.itinerary(Id, customer, flightNumbers, location, Car, Room))
+      String msg = String.join(",", args);
+      if (sendAndRecv(msg))
         System.out.println("Itinerary Reserved");
       else
         System.out.println("Itinerary could not be reserved.");
@@ -933,9 +936,11 @@ public class TCPClient {
     System.out.println(
         "Adding a new Customer using id:" + args.elementAt(1) + " and cid " + args.elementAt(2));
     try {
-      int Id = getInt(args.elementAt(1));
+      getInt(args.elementAt(1));
       int Cid = getInt(args.elementAt(2));
-      rm.newCustomer(Id, Cid);
+      
+      String msg = String.join(",", args);
+      sendAndRecv(msg);
       System.out.println("new customer id:" + Cid);
     } catch (Exception e) {
       System.out.println("EXCEPTION:");
