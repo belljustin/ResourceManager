@@ -124,16 +124,15 @@ public class CarManagerTCP extends ResourceManagerTCP {
 						default:
 							msg = customerCases(arguments);
 						}
-
-						out.println(msg);
-
 					} catch (Exception e) {
 						// TODO: Handle this exception
 						e.printStackTrace();
 					}
+
+					out.println(msg);
 				}
 			} catch (IOException e) {
-				System.out.println("Exception caught when trying to listen on port");
+				System.out.println("Exception caught when trying to read or write on socket");
 				System.out.println(e.getMessage());
 				return;
 			}

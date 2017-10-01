@@ -202,21 +202,43 @@ public class ResourceManagerTCP {
     }
     
     public String customerCases(Vector<String> arguments) {
+    	int Id;
+    	int cId;
+    	
     	String msg = "";
-    	switch(arguments.elementAt(0)) {
-			case "deletecustomer":
-				break;
+    	try {
+			switch(arguments.elementAt(0)) {
+				case "deletecustomer":
+					Id = getInt(arguments.elementAt(1));
+					cId = getInt(arguments.elementAt(2));
+					msg = Boolean.toString(deleteCustomer(Id, cId));
+					break;
 
-			case "newcustomer":
-				break;
+				case "newcustomer":
+					 Id = getInt(arguments.elementAt(1));
+			         msg = Integer.toString(newCustomer(Id));
+					break;
 
-			case "newcustomerid":
-				break;
+				case "newcustomerid":
+					Id = getInt(arguments.elementAt(1));
+					cId= getInt(arguments.elementAt(2));
+					msg = Boolean.toString(newCustomer(Id, cId));
+					break;
+				
+				case "querycustomer":
+					Id = getInt(arguments.elementAt(1));
+		            int customer = getInt(arguments.elementAt(2));
+		            msg = queryCustomerInfo(Id,customer);
 
-			default:
-				System.out.println("The interface does not support this command.");
-				break;
+				default:
+					System.out.println("The interface does not support this command.");
+					break;
+			}
+    	} catch (Exception e) {
+    		// TODO: handle exception
+    		System.out.println(e.getMessage());
     	}
+			
     	return msg;
     }
 
