@@ -4,7 +4,7 @@
 //
 package server.ResImpl;
 
-import server.ResInterface.ResourceManager;
+import server.ResInterface.*;
 
 import java.util.*;
 
@@ -14,7 +14,7 @@ import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.rmi.RMISecurityManager;
 
-public class ResourceManagerImpl implements ResourceManager 
+public class HotelManagerImpl implements ResourceManager 
 {
     
     protected RMHashtable m_itemHT = new RMHashtable();
@@ -36,15 +36,16 @@ public class ResourceManagerImpl implements ResourceManager
 
         try {
             // create a new Server object
-            ResourceManagerImpl obj = new ResourceManagerImpl();
+            HotelManagerImpl obj = new HotelManagerImpl();
             // dynamically generate the stub (client proxy)
             ResourceManager rm = (ResourceManager) UnicastRemoteObject.exportObject(obj, 0);
 
             // Bind the remote object's stub in the registry
             Registry registry = LocateRegistry.getRegistry(port);
-            registry.rebind("PG12ResourceManager", rm);
+            //registry.rebind("PG12ResourceManager", rm);
+            registry.rebind("PG12HotelRM", rm);
 
-            System.err.println("Server ready");
+            System.err.println("Hotel Server ready");
         } catch (Exception e) {
             System.err.println("Server exception: " + e.toString());
             e.printStackTrace();
@@ -56,7 +57,7 @@ public class ResourceManagerImpl implements ResourceManager
         }
     }
      
-    public ResourceManagerImpl() throws RemoteException {
+    public HotelManagerImpl() throws RemoteException {
     }
      
 
