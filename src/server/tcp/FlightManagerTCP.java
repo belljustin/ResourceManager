@@ -4,7 +4,6 @@
 //
 package server.tcp;
 
-import java.rmi.RemoteException;
 import java.util.Vector;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -148,9 +147,7 @@ public class FlightManagerTCP extends ResourceManagerTCP {
 
     // Create a new flight, or add seats to existing flight
     //  NOTE: if flightPrice <= 0 and the flight already exists, it maintains its current price
-    public boolean addFlight(int id, int flightNum, int flightSeats, int flightPrice)
-        throws RemoteException
-    {
+    public boolean addFlight(int id, int flightNum, int flightSeats, int flightPrice) {
         Trace.info("RM::addFlight(" + id + ", " + flightNum + ", $" + flightPrice + ", " + flightSeats + ") called" );
         Flight curObj = (Flight) readData( id, Flight.getKey(flightNum) );
         if ( curObj == null ) {
@@ -173,30 +170,22 @@ public class FlightManagerTCP extends ResourceManagerTCP {
 
 
     
-    public boolean deleteFlight(int id, int flightNum)
-        throws RemoteException
-    {
+    public boolean deleteFlight(int id, int flightNum) {
         return deleteItem(id, Flight.getKey(flightNum));
     }
 
     // Returns the number of empty seats on this flight
-    public int queryFlight(int id, int flightNum)
-        throws RemoteException
-    {
+    public int queryFlight(int id, int flightNum) {
         return queryNum(id, Flight.getKey(flightNum));
     }
 
     // Returns price of this flight
-    public int queryFlightPrice(int id, int flightNum )
-        throws RemoteException
-    {
+    public int queryFlightPrice(int id, int flightNum ) {
         return queryPrice(id, Flight.getKey(flightNum));
     }
 
     // Adds flight reservation to this customer.  
-    public boolean reserveFlight(int id, int customerID, int flightNum)
-        throws RemoteException
-    {
+    public boolean reserveFlight(int id, int customerID, int flightNum) {
         return reserveItem(id, customerID, Flight.getKey(flightNum), String.valueOf(flightNum));
     }
 }
