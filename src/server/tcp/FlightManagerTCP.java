@@ -7,7 +7,7 @@ package server.tcp;
 import java.util.Vector;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import server.ResImpl.Car;
+import server.ResImpl.Flight;
 import server.ResImpl.Trace;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -16,7 +16,7 @@ import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 
-public class CarManagerTCP extends ResourceManagerTCP {
+public class FlightManagerTCP extends ResourceManagerTCP {
   private ServerSocket serverSocket = null;
 
   private ExecutorService executorService = Executors.newFixedThreadPool(10);
@@ -28,7 +28,7 @@ public class CarManagerTCP extends ResourceManagerTCP {
       port = Integer.parseInt(args[0]);
     } else if (args.length > 1) {
       System.err.println("Wrong usage");
-      System.out.println("Usage: java server.CarManagerTCP [port]");
+      System.out.println("Usage: java server.FlightManagerTCP [port]");
       System.exit(1);
     }
 
@@ -36,7 +36,7 @@ public class CarManagerTCP extends ResourceManagerTCP {
     carRM.runServer();
   }
 
-  public CarManagerTCP(int port) {
+  public FlightManagerTCP(int port) {
     try {
       serverSocket = new ServerSocket(port);
     } catch (IOException e) {
@@ -60,10 +60,6 @@ public class CarManagerTCP extends ResourceManagerTCP {
   }
 
   class ServiceRequest implements Runnable {
-    private int Id;
-    private String location;
-    private int numCars;
-    private int price;
 
     private Socket socket;
     PrintWriter out;
@@ -74,6 +70,11 @@ public class CarManagerTCP extends ResourceManagerTCP {
     }
 
     public void run() {
+      int Id;
+      int flightNum;
+      int flightSeats;
+      int flightPrice;
+
       String inputLine = null;
 
       try {
@@ -85,37 +86,37 @@ public class CarManagerTCP extends ResourceManagerTCP {
           String msg = "";
           try {
             switch (arguments.elementAt(0)) {
-              case "newcar":
+              case "newflight":
                 Id = getInt(arguments.elementAt(1));
-                location = getString(arguments.elementAt(2));
-                numCars = getInt(arguments.elementAt(3));
-                price = getInt(arguments.elementAt(4));
-                msg = Boolean.toString(addCars(Id, location, numCars, price));
+                flightNum = getInt(arguments.elementAt(2));
+                flightSeats = getInt(arguments.elementAt(3));
+                flightPrice = getInt(arguments.elementAt(4));
+                msg = Boolean.toString(addFlight(Id, flightNum, flightSeats, flightPrice));
                 break;
 
-              case "deletecar":
+              case "deleteflight":
                 Id = getInt(arguments.elementAt(1));
-                location = getString(arguments.elementAt(2));
-                msg = Boolean.toString(deleteCars(Id, location));
+                flightNum = getInt(arguments.elementAt(2));
+                msg = Boolean.toString(deleteFlight(Id, flightNum));
                 break;
 
-              case "querycar":
+              case "queryflight":
                 Id = getInt(arguments.elementAt(1));
-                location = getString(arguments.elementAt(2));
-                msg = Integer.toString(queryCars(Id, location));
+                flightNum = getInt(arguments.elementAt(2));
+                msg = Integer.toString(queryFlight(Id, flightNum));
                 break;
 
-              case "querycarprice":
+              case "queryflightprice":
                 Id = getInt(arguments.elementAt(1));
-                location = getString(arguments.elementAt(2));
-                msg = Integer.toString(queryCarsPrice(Id, location));
+                flightNum = getInt(arguments.elementAt(2));
+                msg = Integer.toString(queryFlightPrice(Id, flightNum));
                 break;
 
-              case "reservecar":
+              case "reserveflight":
                 Id = getInt(arguments.elementAt(1));
                 int customer = getInt(arguments.elementAt(2));
-                location = getString(arguments.elementAt(3));
-                msg = Boolean.toString(reserveCar(Id, customer, location));
+                flightNum = getInt(arguments.elementAt(3));
+                msg = Boolean.toString(reserveFlight(Id, customer, flightNum));
                 break;
 
               default:
@@ -142,48 +143,50 @@ public class CarManagerTCP extends ResourceManagerTCP {
     }
   }
 
-  // Create a new car location or add cars to an existing location
-  // NOTE: if price <= 0 and the location already exists, it maintains its current
-  // price
-  public boolean addCars(int id, String location, int count, int price) {
-    Trace.info("RM::addCars(" + id + ", " + location + ", " + count + ", $" + price + ") called");
-    Car curObj = (Car) readData(id, Car.getKey(location));
+  // Create a new flight, or add seats to existing flight
+  // NOTE: if flightPrice <= 0 and the flight already exists, it maintains its current price
+  public boolean addFlight(int id, int flightNum, int flightSeats, int flightPrice)
+      {
+    Trace.info("RM::addFlight(" + id + ", " + flightNum + ", $" + flightPrice + ", " + flightSeats
+        + ") called");
+    Flight curObj = (Flight) readData(id, Flight.getKey(flightNum));
     if (curObj == null) {
-      // car location doesn't exist...add it
-      Car newObj = new Car(location, count, price);
+      // doesn't exist...add it
+      Flight newObj = new Flight(flightNum, flightSeats, flightPrice);
       writeData(id, newObj.getKey(), newObj);
-      Trace.info("RM::addCars(" + id + ") created new location " + location + ", count=" + count
-          + ", price=$" + price);
+      Trace.info("RM::addFlight(" + id + ") created new flight " + flightNum + ", seats="
+          + flightSeats + ", price=$" + flightPrice);
     } else {
-      // add count to existing car location and update price...
-      curObj.setCount(curObj.getCount() + count);
-      if (price > 0) {
-        curObj.setPrice(price);
+      // add seats to existing flight and update the price...
+      curObj.setCount(curObj.getCount() + flightSeats);
+      if (flightPrice > 0) {
+        curObj.setPrice(flightPrice);
       } // if
       writeData(id, curObj.getKey(), curObj);
-      Trace.info("RM::addCars(" + id + ") modified existing location " + location + ", count="
-          + curObj.getCount() + ", price=$" + price);
+      Trace.info("RM::addFlight(" + id + ") modified existing flight " + flightNum + ", seats="
+          + curObj.getCount() + ", price=$" + flightPrice);
     } // else
     return (true);
   }
 
-  // Delete cars from a location
-  public boolean deleteCars(int id, String location) {
-    return deleteItem(id, Car.getKey(location));
+
+
+  public boolean deleteFlight(int id, int flightNum) {
+    return deleteItem(id, Flight.getKey(flightNum));
   }
 
-  // Returns the number of cars available at a location
-  public int queryCars(int id, String location) {
-    return queryNum(id, Car.getKey(location));
+  // Returns the number of empty seats on this flight
+  public int queryFlight(int id, int flightNum) {
+    return queryNum(id, Flight.getKey(flightNum));
   }
 
-  // Returns price of cars at this location
-  public int queryCarsPrice(int id, String location) {
-    return queryPrice(id, Car.getKey(location));
+  // Returns price of this flight
+  public int queryFlightPrice(int id, int flightNum) {
+    return queryPrice(id, Flight.getKey(flightNum));
   }
 
-  // Adds car reservation to this customer.
-  public boolean reserveCar(int id, int customerID, String location) {
-    return reserveItem(id, customerID, Car.getKey(location), location);
+  // Adds flight reservation to this customer.
+  public boolean reserveFlight(int id, int customerID, int flightNum) {
+    return reserveItem(id, customerID, Flight.getKey(flightNum), String.valueOf(flightNum));
   }
 }

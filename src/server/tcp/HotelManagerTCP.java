@@ -7,7 +7,7 @@ package server.tcp;
 import java.util.Vector;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import server.ResImpl.Car;
+import server.ResImpl.Hotel;
 import server.ResImpl.Trace;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -16,7 +16,7 @@ import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 
-public class CarManagerTCP extends ResourceManagerTCP {
+public class HotelManagerTCP extends ResourceManagerTCP {
   private ServerSocket serverSocket = null;
 
   private ExecutorService executorService = Executors.newFixedThreadPool(10);
@@ -28,7 +28,7 @@ public class CarManagerTCP extends ResourceManagerTCP {
       port = Integer.parseInt(args[0]);
     } else if (args.length > 1) {
       System.err.println("Wrong usage");
-      System.out.println("Usage: java server.CarManagerTCP [port]");
+      System.out.println("Usage: java server.HotelManagerTCP [port]");
       System.exit(1);
     }
 
@@ -36,7 +36,7 @@ public class CarManagerTCP extends ResourceManagerTCP {
     carRM.runServer();
   }
 
-  public CarManagerTCP(int port) {
+  public HotelManagerTCP(int port) {
     try {
       serverSocket = new ServerSocket(port);
     } catch (IOException e) {
@@ -60,11 +60,6 @@ public class CarManagerTCP extends ResourceManagerTCP {
   }
 
   class ServiceRequest implements Runnable {
-    private int Id;
-    private String location;
-    private int numCars;
-    private int price;
-
     private Socket socket;
     PrintWriter out;
     BufferedReader in;
@@ -74,6 +69,10 @@ public class CarManagerTCP extends ResourceManagerTCP {
     }
 
     public void run() {
+      int Id;
+      String location;
+      int numRooms;
+      int price;
       String inputLine = null;
 
       try {
@@ -85,37 +84,38 @@ public class CarManagerTCP extends ResourceManagerTCP {
           String msg = "";
           try {
             switch (arguments.elementAt(0)) {
-              case "newcar":
+              case "newroom":
                 Id = getInt(arguments.elementAt(1));
                 location = getString(arguments.elementAt(2));
-                numCars = getInt(arguments.elementAt(3));
+                numRooms = getInt(arguments.elementAt(3));
                 price = getInt(arguments.elementAt(4));
-                msg = Boolean.toString(addCars(Id, location, numCars, price));
+                msg = Boolean.toString(addRooms(Id, location, numRooms, price));
                 break;
 
-              case "deletecar":
+              case "deleteroom":
                 Id = getInt(arguments.elementAt(1));
                 location = getString(arguments.elementAt(2));
-                msg = Boolean.toString(deleteCars(Id, location));
+                msg = Boolean.toString(deleteRooms(Id, location));
                 break;
 
-              case "querycar":
+              case "queryroom":
                 Id = getInt(arguments.elementAt(1));
                 location = getString(arguments.elementAt(2));
-                msg = Integer.toString(queryCars(Id, location));
+                msg = Integer.toString(queryRooms(Id, location));
                 break;
 
-              case "querycarprice":
+              case "queryroomprice":
                 Id = getInt(arguments.elementAt(1));
                 location = getString(arguments.elementAt(2));
-                msg = Integer.toString(queryCarsPrice(Id, location));
+                msg = Integer.toString(queryRoomsPrice(Id, location));
                 break;
 
-              case "reservecar":
+              case "reserveroom":
                 Id = getInt(arguments.elementAt(1));
                 int customer = getInt(arguments.elementAt(2));
                 location = getString(arguments.elementAt(3));
-                msg = Boolean.toString(reserveCar(Id, customer, location));
+
+                msg = Boolean.toString(reserveRoom(Id, customer, location));
                 break;
 
               default:
@@ -142,48 +142,48 @@ public class CarManagerTCP extends ResourceManagerTCP {
     }
   }
 
-  // Create a new car location or add cars to an existing location
-  // NOTE: if price <= 0 and the location already exists, it maintains its current
-  // price
-  public boolean addCars(int id, String location, int count, int price) {
-    Trace.info("RM::addCars(" + id + ", " + location + ", " + count + ", $" + price + ") called");
-    Car curObj = (Car) readData(id, Car.getKey(location));
+  // Create a new room location or add rooms to an existing location
+  // NOTE: if price <= 0 and the room location already exists, it maintains its current price
+  public boolean addRooms(int id, String location, int count, int price) {
+    Trace.info("RM::addRooms(" + id + ", " + location + ", " + count + ", $" + price + ") called");
+    Hotel curObj = (Hotel) readData(id, Hotel.getKey(location));
     if (curObj == null) {
-      // car location doesn't exist...add it
-      Car newObj = new Car(location, count, price);
+      // doesn't exist...add it
+      Hotel newObj = new Hotel(location, count, price);
       writeData(id, newObj.getKey(), newObj);
-      Trace.info("RM::addCars(" + id + ") created new location " + location + ", count=" + count
-          + ", price=$" + price);
+      Trace.info("RM::addRooms(" + id + ") created new room location " + location + ", count="
+          + count + ", price=$" + price);
     } else {
-      // add count to existing car location and update price...
+      // add count to existing object and update price...
       curObj.setCount(curObj.getCount() + count);
       if (price > 0) {
         curObj.setPrice(price);
       } // if
       writeData(id, curObj.getKey(), curObj);
-      Trace.info("RM::addCars(" + id + ") modified existing location " + location + ", count="
+      Trace.info("RM::addRooms(" + id + ") modified existing location " + location + ", count="
           + curObj.getCount() + ", price=$" + price);
     } // else
     return (true);
   }
 
-  // Delete cars from a location
-  public boolean deleteCars(int id, String location) {
-    return deleteItem(id, Car.getKey(location));
+  // Delete rooms from a location
+  public boolean deleteRooms(int id, String location) {
+    return deleteItem(id, Hotel.getKey(location));
+
   }
 
-  // Returns the number of cars available at a location
-  public int queryCars(int id, String location) {
-    return queryNum(id, Car.getKey(location));
+  // Returns the number of rooms available at a location
+  public int queryRooms(int id, String location) {
+    return queryNum(id, Hotel.getKey(location));
   }
 
-  // Returns price of cars at this location
-  public int queryCarsPrice(int id, String location) {
-    return queryPrice(id, Car.getKey(location));
+  // Returns room price at this location
+  public int queryRoomsPrice(int id, String location) {
+    return queryPrice(id, Hotel.getKey(location));
   }
 
-  // Adds car reservation to this customer.
-  public boolean reserveCar(int id, int customerID, String location) {
-    return reserveItem(id, customerID, Car.getKey(location), location);
+  // Adds room reservation to this customer.
+  public boolean reserveRoom(int id, int customerID, String location) {
+    return reserveItem(id, customerID, Hotel.getKey(location), location);
   }
 }
