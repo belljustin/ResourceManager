@@ -8,6 +8,6 @@ COMP 512 - Distributed Computing Project
 3. run `ant`
 4. `source .env` to set project and class path
 5. use launch files in `scripts` to start system. `cd scripts`
-    a. `./server_start.sh`
-    b. `./middleware_start.sh`
-    c. `./client_start.sh`
+    1. `./server_start.sh`
+    2. `./middleware_start.sh`
+    3. `./client_start.sh`
