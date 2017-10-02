@@ -509,6 +509,7 @@ public class MiddleWare implements ResourceManager
     		if(temp == false){
     			flag = false;
     		}
+    	}
     	if (Car) {
     		carFlag = carRM.reserveCar(id, customer, location);
     	}
@@ -516,7 +517,7 @@ public class MiddleWare implements ResourceManager
     	if (Room) {
     		hotelFlag = hotelRM.reserveRoom(id, customer, location);
     	}
-    	}
+    	
     	
     	
      return (flag && carFlag && hotelFlag);
