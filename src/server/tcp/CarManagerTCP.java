@@ -83,7 +83,7 @@ public class CarManagerTCP extends ResourceManagerTCP {
         Trace.info("" + socket.getLocalPort());
         
         while ((inputLine = in.readLine()) != null) {
-          Trace.info("Recieved command: " + inputLine);
+          Trace.info("FOO Recieved command: " + inputLine);
 
           Vector<String> arguments = parse(inputLine);
 

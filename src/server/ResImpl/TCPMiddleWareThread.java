@@ -142,8 +142,8 @@ public class TCPMiddleWareThread implements Runnable{
 						String temp_message_Flight_query = sendAndRecvStr(message,outToFlightRM, inFromFlightRM);
 						String temp_message_Car_query = sendAndRecvStr(message, outToCarRM, inFromCarRM);
 						String temp_message_Hotel_query = sendAndRecvStr(message, outToHotelRM, inFromHotelRM);
-						messageToClient = "Flight information: \n" + temp_message_Flight_query + "\n \n" + "Car information: \n" + temp_message_Car_query + "\n \n" + "Hotel Information: \n" + temp_message_Hotel_query;
-						
+						messageToClient = "Flight information: " + temp_message_Flight_query + "Car information: " + temp_message_Car_query + "Hotel Information: " + temp_message_Hotel_query;
+					
 						
 					}
 					

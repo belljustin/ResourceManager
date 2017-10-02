@@ -32,8 +32,8 @@ public class FlightManagerTCP extends ResourceManagerTCP {
       System.exit(1);
     }
 
-    CarManagerTCP carRM = new CarManagerTCP(port);
-    carRM.runServer();
+    FlightManagerTCP flightRM = new FlightManagerTCP(port);
+    flightRM.runServer();
   }
 
   public FlightManagerTCP(int port) {
@@ -84,6 +84,7 @@ public class FlightManagerTCP extends ResourceManagerTCP {
           Vector<String> arguments = parse(inputLine);
 
           String msg = "";
+          Trace.info("command: " + arguments.elementAt(0));
           try {
             switch (arguments.elementAt(0)) {
               case "newflight":

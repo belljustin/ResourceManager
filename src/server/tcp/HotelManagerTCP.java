@@ -32,8 +32,8 @@ public class HotelManagerTCP extends ResourceManagerTCP {
       System.exit(1);
     }
 
-    CarManagerTCP carRM = new CarManagerTCP(port);
-    carRM.runServer();
+    HotelManagerTCP hotelRM = new HotelManagerTCP(port);
+    hotelRM.runServer();
   }
 
   public HotelManagerTCP(int port) {
