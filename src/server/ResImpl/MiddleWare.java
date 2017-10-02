@@ -499,8 +499,39 @@ public class MiddleWare implements ResourceManager
     public boolean itinerary(int id,int customer,Vector flightNumbers,String location,boolean Car,boolean Room)
         throws RemoteException
     {
-        return false;
+    	boolean flag = true;
+    	boolean carFlag = true;
+    	boolean hotelFlag = true;
+    	Vector<String> flightParams = flightNumbers;
+    	for(String flightNumber: flightParams) {
+    		int number = Integer.parseInt(flightNumber);
+    		boolean temp = flightRM.reserveFlight(id, customer, number);
+    		if(temp == false){
+    			flag = false;
+    		}
+    	if (Car) {
+    		carFlag = carRM.reserveCar(id, customer, location);
+    	}
+    	
+    	if (Room) {
+    		hotelFlag = hotelRM.reserveRoom(id, customer, location);
+    	}
+    	}
+    	
+    	
+     return (flag && carFlag && hotelFlag);
     }
+    
+//	public Boolean checkNumeric(String msg) {
+//		boolean toReturn;
+//		try {
+//			int x = (int) Integer.parseInt(msg);
+//			toReturn = true;
+//		} catch (Exception e){
+//			toReturn = false;
+//		}
+//		return toReturn;
+//}
 
 }
 
