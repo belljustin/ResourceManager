@@ -370,17 +370,20 @@ public class MiddleWare implements ResourceManager
 //                System.out.println( s );
 //                return s;
 //        } // if
+    	String toReturn;
         String A = hotelRM.queryCustomerInfo(id, customerID);
     	String B = carRM.queryCustomerInfo(id, customerID);
     	String C = flightRM.queryCustomerInfo(id, customerID);
+    	if( A.isEmpty() && B.isEmpty() && C.isEmpty()){
+    		Trace.warn("RM::queryCustomerInfo(" + id + ", " + customerID + ") failed--customer doesn't exist" );
+    		toReturn = "\n RM::queryCustomerInfo(" + id + ", " + customerID + ") failed--customer doesn't exist" ;
+    		return ("\n" + toReturn);
+    	}
     	A = ("Hotel: " + A + "\n");
     	B = ("Car: " + B + "\n");
     	C = ("Flight: " + C + "\n");
-    	String toReturn = A+B+C;
-    	if(toReturn==null || toReturn.isEmpty()){
-    		Trace.warn("RM::queryCustomerInfo(" + id + ", " + customerID + ") failed--customer doesn't exist" );
-    		toReturn = "\n RM::queryCustomerInfo(" + id + ", " + customerID + ") failed--customer doesn't exist" ;
-    	}
+    	toReturn = A+B+C;
+
     	return ("\n" + toReturn);
     }
 
