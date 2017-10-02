@@ -112,18 +112,21 @@ public class TCPMiddleWareThread implements Runnable{
 							flights.add(params[i]);
 							i++;
 						}
+						for (String flight : flights) {
+							System.out.println(flight);
+						}
 						String location = params[i];
 						i++; 
-						Boolean bookCar = Boolean.parseBoolean(params[i]);
+						boolean bookCar = Boolean.parseBoolean(params[i]);
 						i++;
-						Boolean bookRoom = Boolean.parseBoolean(params[i]);
+						boolean bookRoom = Boolean.parseBoolean(params[i]);
 						String Flight_message="";
 						String Car_message = "";
 						String Hotel_message = "";
 						for (String flight : flights) {
 							String toSend = "reserveflight,"+id + "," + customerID + "," + flight;
 							Flight_message.concat(sendAndRecvStr(toSend, outToFlightRM, inFromFlightRM));
-							Flight_message.concat("\n");
+//							Flight_message.concat("\n");
 						}
 						if (bookCar){
 							
@@ -135,7 +138,7 @@ public class TCPMiddleWareThread implements Runnable{
 							Hotel_message = sendAndRecvStr(toSend, outToHotelRM, inFromHotelRM);
 						}
 						
-						messageToClient = Flight_message + "\n Car booking: \n " + Car_message + "\n Hotel booking: \n " + Hotel_message;
+						messageToClient = Flight_message + "Car booking: " + Car_message + " Hotel booking: " + Hotel_message;
 						//do some parsing then forward to right RM
 						break;
 					case 5:
