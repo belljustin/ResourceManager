@@ -87,9 +87,7 @@ public class TCPMiddleWareThread implements Runnable{
 							message = "newcustomerid," + params[1]+ "," + cid; 
 						} else if(params[0].compareToIgnoreCase("newcustomerid")==0) {
 							cid = Integer.parseInt(params[2]);
-						} else if(params[0].compareToIgnoreCase("deletecustomer")==0) {
-							cid = Integer.parseInt(params[2]);
-						} else{
+						}  else{
 							cid = Integer.parseInt(params[2]);
 						}
 					
@@ -148,7 +146,14 @@ public class TCPMiddleWareThread implements Runnable{
 						String temp_message_Car_query = sendAndRecvStr(message, outToCarRM, inFromCarRM);
 						String temp_message_Hotel_query = sendAndRecvStr(message, outToHotelRM, inFromHotelRM);
 						messageToClient = "Flight information: " + temp_message_Flight_query + "Car information: " + temp_message_Car_query + "Hotel Information: " + temp_message_Hotel_query;
-					
+						break; 
+					case 6:
+						
+						boolean bool_flight_deleted = sendAndRecv(message,outToFlightRM, inFromFlightRM);
+						boolean bool_car_deleted = sendAndRecv(message, outToCarRM, inFromCarRM);
+						boolean bool_hotel_deleted = sendAndRecv(message, outToHotelRM, inFromHotelRM);	
+						
+						messageToClient = "" + (bool_flight_deleted && bool_car_deleted && bool_hotel_deleted);
 						
 					}
 					
@@ -182,12 +187,14 @@ public class TCPMiddleWareThread implements Runnable{
 			return 1;
 		} else if (methodName.compareToIgnoreCase("newroom") == 0 || methodName.compareToIgnoreCase("deleteroom") == 0 || methodName.compareToIgnoreCase("queryroom") == 0 || methodName.compareToIgnoreCase("queryroomprice") == 0 || methodName.compareToIgnoreCase("reserveroom") == 0) {
 			return 2;
-		}  else if (methodName.compareToIgnoreCase("newcustomerid")==0 || methodName.compareToIgnoreCase("newcustomer") == 0 || methodName.compareToIgnoreCase("deletecustomer") == 0){
+		}  else if (methodName.compareToIgnoreCase("newcustomerid")==0 || methodName.compareToIgnoreCase("newcustomer") == 0){
 			return 3;
 		}  else if (methodName.compareToIgnoreCase("itinerary")==0) {
 			return 4;
 		} else if (methodName.compareToIgnoreCase("querycustomer")==0){
 			return 5;
+		} else if (methodName.compareToIgnoreCase("deletecustomer") == 0){
+			return 6;
 		} else {
 			return -1;
 		}
