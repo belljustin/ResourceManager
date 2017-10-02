@@ -104,9 +104,8 @@ public class TCPMiddleWareThread implements Runnable{
 						//forward to HotelRM
 						break;
 					case 4: 
-						
 						String customerID = params[2]; 
-						Vector<String> flights = null;
+						Vector<String> flights = new Vector<String>();
 						int i = 3; 
 						while(checkNumeric(params[i])) {
 							flights.add(params[i]);
@@ -120,25 +119,29 @@ public class TCPMiddleWareThread implements Runnable{
 						boolean bookCar = Boolean.parseBoolean(params[i]);
 						i++;
 						boolean bookRoom = Boolean.parseBoolean(params[i]);
-						String Flight_message="";
-						String Car_message = "";
-						String Hotel_message = "";
+						boolean Flight_message = false;
+						boolean Car_message = false;
+						boolean Hotel_message = false;
 						for (String flight : flights) {
 							String toSend = "reserveflight,"+id + "," + customerID + "," + flight;
-							Flight_message.concat(sendAndRecvStr(toSend, outToFlightRM, inFromFlightRM));
+							Flight_message = sendAndRecv(toSend, outToFlightRM, inFromFlightRM);
 //							Flight_message.concat("\n");
+							Trace.info("flightmessage: " + Flight_message);
 						}
 						if (bookCar){
-							
+							Trace.info("Booking car");
 							String toSend = "reservecar," + id + "," + customerID + "," +location;
-							Car_message = sendAndRecvStr(toSend, outToCarRM, inFromCarRM);
+							Car_message = sendAndRecv(toSend, outToCarRM, inFromCarRM);
+							Trace.info("Carmessage: " + Car_message);
 						}
 						if (bookRoom){
+							Trace.info("Booking room");
 							String toSend = "reserveroom," + id + "," + customerID + "," + location; 
-							Hotel_message = sendAndRecvStr(toSend, outToHotelRM, inFromHotelRM);
+							Hotel_message = sendAndRecv(toSend, outToHotelRM, inFromHotelRM);
+							Trace.info("Carmessage: " + Hotel_message);
 						}
 						
-						messageToClient = Flight_message + "Car booking: " + Car_message + " Hotel booking: " + Hotel_message;
+						messageToClient = String.valueOf(Hotel_message && Car_message && Flight_message);
 						//do some parsing then forward to right RM
 						break;
 					case 5:
@@ -167,7 +170,9 @@ public class TCPMiddleWareThread implements Runnable{
 			
 			
 		} catch (IOException e){
-			
+			e.printStackTrace();
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 	}
 	
@@ -193,7 +198,7 @@ public class TCPMiddleWareThread implements Runnable{
 	  public Boolean sendAndRecv(String msg, PrintWriter out, BufferedReader in) {
 		    out.println(msg);
 		    try {
-		      return Boolean.getBoolean(in.readLine());
+		      return Boolean.parseBoolean(in.readLine());
 		    } catch (IOException e) {
 		      // TODO Auto-generated catch block
 		      e.printStackTrace();
@@ -204,7 +209,7 @@ public class TCPMiddleWareThread implements Runnable{
 		  public int sendAndRecvInt(String msg, PrintWriter out, BufferedReader in) {
 		    out.println(msg);
 		    try {
-		      return Integer.getInteger(in.readLine());
+		      return Integer.parseInt(in.readLine());
 		    } catch (IOException e) {
 		      // TODO Auto-generated catch block
 		      e.printStackTrace();
@@ -226,6 +231,7 @@ public class TCPMiddleWareThread implements Runnable{
 		  }
 		  
 	public Boolean checkNumeric(String msg) {
+		Trace.info("Hit");
 		boolean toReturn;
 		try {
 			int x = (int) Integer.parseInt(msg);
