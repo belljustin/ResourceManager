@@ -976,7 +976,7 @@ public class TCPClient {
   public String sendAndRecvStr(String msg) {
     out.println(msg);
     try {
-      return in.readLine();
+      return in.readLine().replaceAll(":", ":\n\t").replaceAll("(Flight|Car|Hotel)", "\n\t$1");
     } catch (IOException e) {
       // TODO Auto-generated catch block
       e.printStackTrace();

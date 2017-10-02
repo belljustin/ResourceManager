@@ -22,7 +22,6 @@ public class TCPMiddleWareThread implements Runnable{
 	int carRMPort;
 	int flightRMPort; 
 	int hotelRMPort;
-	private Socket carRMSocket;
 	TCPMiddleWareThread (Socket socket, String aCarRMHostName, String aHotelRMHostName, String aFlightRMHostName, int aCarRMPort, int aFlightRMPort, int aHotelRMPort) {
 		this.socket= socket;
 		carRMHostName = aCarRMHostName;
@@ -37,7 +36,7 @@ public class TCPMiddleWareThread implements Runnable{
 	public void run() {
 		try { 
 			
-			carRMSocket = new Socket(carRMHostName, carRMPort);
+			Socket carRMSocket = new Socket(carRMHostName, carRMPort);
 			PrintWriter outToCarRM = new PrintWriter(carRMSocket.getOutputStream(), true);
 			BufferedReader inFromCarRM = new BufferedReader(new InputStreamReader(carRMSocket.getInputStream()));
 			Trace.info("Connecting to carRM on port: " + carRMSocket.getPort());
