@@ -33,6 +33,7 @@ public class CarManagerTCP extends ResourceManagerTCP {
     }
 
     CarManagerTCP carRM = new CarManagerTCP(port);
+    Trace.info("\nStarting car manager on port " + port);
     carRM.runServer();
   }
 

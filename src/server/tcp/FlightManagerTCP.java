@@ -33,6 +33,7 @@ public class FlightManagerTCP extends ResourceManagerTCP {
     }
 
     FlightManagerTCP flightRM = new FlightManagerTCP(port);
+    Trace.info("\nStarting flight Manager on port " + port);
     flightRM.runServer();
   }
 
