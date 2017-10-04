@@ -21,32 +21,55 @@ public class TCPMiddleWare implements ResourceManager
 	private ResourceManager carRM;
 	private ResourceManager hotelRM;
 	private Registry registry;
+	
+	private String carHost;
+	private String hotelHost;
+	private String flightHost;
+
 	private int carPort;
 	private int hotelPort;
 	private int flightPort;
     
     protected RMHashtable m_itemHT = new RMHashtable();
     
-    public TCPMiddleWare(int aCarPort, int aHotelPort, int aFlightPort){
-    	carPort = aCarPort;
-    	hotelPort = aHotelPort;
-    	flightPort = aFlightPort;
+    public TCPMiddleWare(String carHost, int carPort, String hotelHost, int hotelPort, String flightHost, int flightPort){
+          this.carHost = carHost;
+          this.carPort = carPort;
+          this.hotelHost = hotelHost;
+          this.hotelPort = hotelPort;
+          this.flightHost = flightHost;
+          this.flightPort = flightPort;
     }
 
 
     public static void main(String args[]) {
         // Figure out where server is running
-        String server = "localhost";
-        int port = 1099;
+        String carHost, hotelHost, flightHost = "localhost";
+        int carPort, hotelPort, flightPort = 1099;
 
-        if (args.length != 3) {
+        if (args.length != 6) {
             System.err.println ("Wrong usage");
-            System.out.println("Usage: java server.TCPMiddleWare <carPort>" +
-                               "<hotelPort> <flightPort>");
+            System.out.println("Usage: java server.TCPMiddleWare <carHost> <carPort> " +
+                               "<hotelHost> <hotelPort> " +
+                               "<flightHost> <flightPort>");
             System.exit(1);
         }
         
-            TCPMiddleWare middleWare = new TCPMiddleWare(Integer.parseInt(args[0]), Integer.parseInt(args[1]), Integer.parseInt(args[2]));
+            carHost = args[0];
+            carPort = Integer.parseInt(args[1]);
+
+            hotelHost = args[2];
+            hotelPort = Integer.parseInt(args[3]);
+
+            flightHost = args[4];
+            flightPort = Integer.parseInt(args[5]);
+
+            TCPMiddleWare middleWare = new TCPMiddleWare(
+                 carHost, carPort,
+                 hotelHost, hotelPort,
+                 flightHost, flightPort
+            );
+
             try {
             	middleWare.runServerThread();
             } catch (Exception e) {
@@ -58,15 +81,17 @@ public class TCPMiddleWare implements ResourceManager
     }
     
     public void runServerThread() throws IOException {
-    	ServerSocket serverSocket = new ServerSocket(8080);
-    	System.out.println("Middleware is ready...");
-    	ExecutorService cachedPool = Executors.newCachedThreadPool();
-    	while(true){
-    		Socket socket = serverSocket.accept();
-    		Trace.info("Client accepted");
-    		cachedPool.submit(new TCPMiddleWareThread(socket,"localhost", "localhost", "localhost", carPort, flightPort, hotelPort));
-    		
-    	}
+          ServerSocket serverSocket = new ServerSocket(8080);
+          System.out.println("Middleware is ready...");
+          ExecutorService cachedPool = Executors.newCachedThreadPool();
+          while(true){
+              Socket socket = serverSocket.accept();
+              Trace.info("Client accepted");
+              cachedPool.submit(new TCPMiddleWareThread(
+                  socket,
+                  carHost, hotelHost, flightHost,
+                  carPort, flightPort, hotelPort));
+          }
     }
     
     public void connectRM() throws Exception{
