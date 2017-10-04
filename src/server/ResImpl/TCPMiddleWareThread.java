@@ -39,7 +39,6 @@ public class TCPMiddleWareThread implements Runnable{
 			Socket carRMSocket = new Socket(carRMHostName, carRMPort);
 			PrintWriter outToCarRM = new PrintWriter(carRMSocket.getOutputStream(), true);
 			BufferedReader inFromCarRM = new BufferedReader(new InputStreamReader(carRMSocket.getInputStream()));
-			Trace.info("Connecting to carRM on port: " + carRMSocket.getPort());
 			
 			
 			Socket hotelRMSocket = new Socket(hotelRMHostName, hotelRMPort);

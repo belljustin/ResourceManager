@@ -33,6 +33,7 @@ public class HotelManagerTCP extends ResourceManagerTCP {
     }
 
     HotelManagerTCP hotelRM = new HotelManagerTCP(port);
+    Trace.info("\nStarting hotel manager on port " + port);
     hotelRM.runServer();
   }
 

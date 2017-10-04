@@ -84,7 +84,7 @@ public class TCPMiddleWare implements ResourceManager
     
     public void runServerThread() throws IOException {
           ServerSocket serverSocket = new ServerSocket(8080);
-          System.out.println("Middleware is ready...");
+          System.out.println("Middleware is ready... port 8080");
           ExecutorService cachedPool = Executors.newCachedThreadPool();
           while(true){
               Socket socket = serverSocket.accept();
