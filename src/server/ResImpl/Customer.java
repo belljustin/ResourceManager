@@ -7,7 +7,7 @@ package server.ResImpl;
 import java.util.*;
 
 public class Customer extends RMItem {
-  Customer(int id) {
+  public Customer(int id) {
     super();
     m_Reservations = new RMHashtable();
     m_nID = id;
@@ -40,12 +40,12 @@ public class Customer extends RMItem {
   }
 
   public String printBill() {
-    String s = "Bill for customer " + m_nID + "\n";
+    String s = "Bill for customer " + m_nID + "";
     Object key = null;
     for (Enumeration e = m_Reservations.keys(); e.hasMoreElements();) {
       key = e.nextElement();
       ReservedItem item = (ReservedItem) m_Reservations.get(key);
-      s = s + item.getCount() + " " + item.getReservableItemKey() + " $" + item.getPrice() + "\n";
+      s = s + " " + item.getCount() + " " + item.getReservableItemKey() + " $" + item.getPrice() + "";
     }
     return s;
   }

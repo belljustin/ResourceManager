@@ -11,7 +11,7 @@ import java.util.*;
 //  extra diagnostics
 public class RMHashtable extends Hashtable
 {
-    RMHashtable() {
+    public RMHashtable() {
       super();
     }
 

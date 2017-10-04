@@ -1,62 +1,158 @@
-// -------------------------------
-// adapted from Kevin T. Manley
-// CSE 593
-//
 package server.ResImpl;
 
 import server.ResInterface.*;
 
 import java.util.*;
-
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.rmi.registry.Registry;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
-import java.rmi.RMISecurityManager;
+import java.io.*;
+import java.net.Socket;
+import java.net.ServerSocket;
+import java.net.UnknownHostException; 
 
-public class ResourceManagerImpl implements ResourceManager 
+public class TCPMiddleWare implements ResourceManager 
 {
+	private ResourceManager rm;
+	private ResourceManager flightRM;
+	private ResourceManager carRM;
+	private ResourceManager hotelRM;
+	private Registry registry;
+	
+	private String carHost;
+	private String hotelHost;
+	private String flightHost;
+
+	private int carPort;
+	private int hotelPort;
+	private int flightPort;
     
     protected RMHashtable m_itemHT = new RMHashtable();
+    
+    public TCPMiddleWare(String carHost, int carPort, String hotelHost, int hotelPort, String flightHost, int flightPort){
+          this.carHost = carHost;
+          this.carPort = carPort;
+          this.hotelHost = hotelHost;
+          this.hotelPort = hotelPort;
+          this.flightHost = flightHost;
+          this.flightPort = flightPort;
+    }
 
 
     public static void main(String args[]) {
         // Figure out where server is running
-        String server = "localhost";
-        int port = 1099;
+        String carHost, hotelHost, flightHost = "localhost";
+        int carPort = 8081;
+        int hotelPort = 8082;
+        int flightPort = 8083;
 
-        if (args.length == 1) {
-            server = server + ":" + args[0];
-            port = Integer.parseInt(args[0]);
-        } else if (args.length != 0 &&  args.length != 1) {
+        if (args.length != 6) {
             System.err.println ("Wrong usage");
-            System.out.println("Usage: java server.ResourceManagerImpl [port]");
+            System.out.println("Usage: java server.TCPMiddleWare <carHost> <carPort> " +
+                               "<hotelHost> <hotelPort> " +
+                               "<flightHost> <flightPort>");
             System.exit(1);
         }
+        
+            carHost = args[0];
+            carPort = Integer.parseInt(args[1]);
 
-        try {
-            // create a new Server object
-            ResourceManagerImpl obj = new ResourceManagerImpl();
-            // dynamically generate the stub (client proxy)
-            ResourceManager rm = (ResourceManager) UnicastRemoteObject.exportObject(obj, 0);
+            hotelHost = args[2];
+            hotelPort = Integer.parseInt(args[3]);
 
-            // Bind the remote object's stub in the registry
-            Registry registry = LocateRegistry.getRegistry(port);
-            registry.rebind("PG12ResourceManager", rm);
+            flightHost = args[4];
+            flightPort = Integer.parseInt(args[5]);
 
-            System.err.println("Server ready");
-        } catch (Exception e) {
-            System.err.println("Server exception: " + e.toString());
-            e.printStackTrace();
-        }
+            TCPMiddleWare middleWare = new TCPMiddleWare(
+                 carHost, carPort,
+                 hotelHost, hotelPort,
+                 flightHost, flightPort
+            );
 
-        // Create and install a security manager
-        if (System.getSecurityManager() == null) {
-            System.setSecurityManager(new RMISecurityManager());
-        }
+            try {
+            	middleWare.runServerThread();
+            } catch (Exception e) {
+            	System.out.println("Exception: " + e.toString());
+            }
+  
+
+    
+    }
+    
+    public void runServerThread() throws IOException {
+          ServerSocket serverSocket = new ServerSocket(8080);
+          System.out.println("Middleware is ready... port 8080");
+          ExecutorService cachedPool = Executors.newCachedThreadPool();
+          while(true){
+              Socket socket = serverSocket.accept();
+              Trace.info("Client accepted");
+              cachedPool.submit(new TCPMiddleWareThread(
+                  socket,
+                  carHost, hotelHost, flightHost,
+                  carPort, flightPort, hotelPort));
+          }
+    }
+    
+    public void connectRM() throws Exception{
+       	if(registry == null){
+    		throw new Exception("Not connected to any registry");
+    		
+    	}
+       	
+    	flightRM = (ResourceManager) registry.lookup("PG12FlightRM");
+    	carRM = (ResourceManager) registry.lookup("PG12CarRM");
+    	hotelRM = (ResourceManager) registry.lookup("PG12HotelRM");
+    			
+    	
+    	if (flightRM == null) {
+    		System.out.println("Faliure to connect to FlightRM");
+    	
+    	} else{ 
+    		System.out.println("Successfully connected to FlightRM");
+    	
+    	}
+    	if (carRM == null) {
+    		System.out.println("Faliure to connect to CarRM");
+    	
+    	} else{ 
+    		System.out.println("Successfully connected to CarRM");
+    	
+    	}
+    	if (hotelRM == null) {
+    		System.out.println("Faliure to connect to HotleRM");
+    	
+    	} else{ 
+    		System.out.println("Successfully connected to HotelRM");
+    	
+    	}
+    	
+    	
+    			
     }
      
-    public ResourceManagerImpl() throws RemoteException {
+    public TCPMiddleWare() {
+    }
+    
+    // Adds flight reservation to this customer.  
+    public boolean reserveFlight(int id, int customerID, int flightNum)
+        throws RemoteException
+    {
+        return flightRM.reserveFlight(id, customerID, flightNum);
+    }
+    
+    // Create a new flight, or add seats to existing flight
+    //  NOTE: if flightPrice <= 0 and the flight already exists, it maintains its current price
+    public boolean addFlight(int id, int flightNum, int flightSeats, int flightPrice) throws RemoteException {
+    	return flightRM.addFlight(id, flightNum, flightSeats, flightPrice);
+
+    }
+    
+    public boolean deleteFlight(int id, int flightNum) throws RemoteException
+    {
+        return flightRM.deleteFlight(id, flightNum);
     }
      
 
@@ -162,38 +258,11 @@ public class ResourceManagerImpl implements ResourceManager
         }        
     }
     
-    // Create a new flight, or add seats to existing flight
-    //  NOTE: if flightPrice <= 0 and the flight already exists, it maintains its current price
-    public boolean addFlight(int id, int flightNum, int flightSeats, int flightPrice)
-        throws RemoteException
-    {
-        Trace.info("RM::addFlight(" + id + ", " + flightNum + ", $" + flightPrice + ", " + flightSeats + ") called" );
-        Flight curObj = (Flight) readData( id, Flight.getKey(flightNum) );
-        if ( curObj == null ) {
-            // doesn't exist...add it
-            Flight newObj = new Flight( flightNum, flightSeats, flightPrice );
-            writeData( id, newObj.getKey(), newObj );
-            Trace.info("RM::addFlight(" + id + ") created new flight " + flightNum + ", seats=" +
-                    flightSeats + ", price=$" + flightPrice );
-        } else {
-            // add seats to existing flight and update the price...
-            curObj.setCount( curObj.getCount() + flightSeats );
-            if ( flightPrice > 0 ) {
-                curObj.setPrice( flightPrice );
-            } // if
-            writeData( id, curObj.getKey(), curObj );
-            Trace.info("RM::addFlight(" + id + ") modified existing flight " + flightNum + ", seats=" + curObj.getCount() + ", price=$" + flightPrice );
-        } // else
-        return(true);
-    }
+
 
 
     
-    public boolean deleteFlight(int id, int flightNum)
-        throws RemoteException
-    {
-        return deleteItem(id, Flight.getKey(flightNum));
-    }
+
 
 
 
@@ -202,31 +271,14 @@ public class ResourceManagerImpl implements ResourceManager
     public boolean addRooms(int id, String location, int count, int price)
         throws RemoteException
     {
-        Trace.info("RM::addRooms(" + id + ", " + location + ", " + count + ", $" + price + ") called" );
-        Hotel curObj = (Hotel) readData( id, Hotel.getKey(location) );
-        if ( curObj == null ) {
-            // doesn't exist...add it
-            Hotel newObj = new Hotel( location, count, price );
-            writeData( id, newObj.getKey(), newObj );
-            Trace.info("RM::addRooms(" + id + ") created new room location " + location + ", count=" + count + ", price=$" + price );
-        } else {
-            // add count to existing object and update price...
-            curObj.setCount( curObj.getCount() + count );
-            if ( price > 0 ) {
-                curObj.setPrice( price );
-            } // if
-            writeData( id, curObj.getKey(), curObj );
-            Trace.info("RM::addRooms(" + id + ") modified existing location " + location + ", count=" + curObj.getCount() + ", price=$" + price );
-        } // else
-        return(true);
+     return hotelRM.addRooms(id, location, count, price);
     }
 
     // Delete rooms from a location
     public boolean deleteRooms(int id, String location)
         throws RemoteException
     {
-        return deleteItem(id, Hotel.getKey(location));
-        
+        return hotelRM.deleteRooms(id, location);
     }
 
     // Create a new car location or add cars to an existing location
@@ -234,23 +286,7 @@ public class ResourceManagerImpl implements ResourceManager
     public boolean addCars(int id, String location, int count, int price)
         throws RemoteException
     {
-        Trace.info("RM::addCars(" + id + ", " + location + ", " + count + ", $" + price + ") called" );
-        Car curObj = (Car) readData( id, Car.getKey(location) );
-        if ( curObj == null ) {
-            // car location doesn't exist...add it
-            Car newObj = new Car( location, count, price );
-            writeData( id, newObj.getKey(), newObj );
-            Trace.info("RM::addCars(" + id + ") created new location " + location + ", count=" + count + ", price=$" + price );
-        } else {
-            // add count to existing car location and update price...
-            curObj.setCount( curObj.getCount() + count );
-            if ( price > 0 ) {
-                curObj.setPrice( price );
-            } // if
-            writeData( id, curObj.getKey(), curObj );
-            Trace.info("RM::addCars(" + id + ") modified existing location " + location + ", count=" + curObj.getCount() + ", price=$" + price );
-        } // else
-        return(true);
+    	return carRM.addCars(id, location, count, price);
     }
 
 
@@ -258,7 +294,7 @@ public class ResourceManagerImpl implements ResourceManager
     public boolean deleteCars(int id, String location)
         throws RemoteException
     {
-        return deleteItem(id, Car.getKey(location));
+        return carRM.deleteCars(id, location);
     }
 
 
@@ -267,7 +303,7 @@ public class ResourceManagerImpl implements ResourceManager
     public int queryFlight(int id, int flightNum)
         throws RemoteException
     {
-        return queryNum(id, Flight.getKey(flightNum));
+        return flightRM.queryFlight(id, flightNum);
     }
 
     // Returns the number of reservations for this flight. 
@@ -288,7 +324,7 @@ public class ResourceManagerImpl implements ResourceManager
     public int queryFlightPrice(int id, int flightNum )
         throws RemoteException
     {
-        return queryPrice(id, Flight.getKey(flightNum));
+        return flightRM.queryFlightPrice(id, flightNum);
     }
 
 
@@ -296,7 +332,7 @@ public class ResourceManagerImpl implements ResourceManager
     public int queryRooms(int id, String location)
         throws RemoteException
     {
-        return queryNum(id, Hotel.getKey(location));
+        return hotelRM.queryRooms(id, location);
     }
 
 
@@ -306,7 +342,7 @@ public class ResourceManagerImpl implements ResourceManager
     public int queryRoomsPrice(int id, String location)
         throws RemoteException
     {
-        return queryPrice(id, Hotel.getKey(location));
+        return hotelRM.queryRoomsPrice(id, location);
     }
 
 
@@ -314,7 +350,7 @@ public class ResourceManagerImpl implements ResourceManager
     public int queryCars(int id, String location)
         throws RemoteException
     {
-        return queryNum(id, Car.getKey(location));
+        return carRM.queryCars(id, location);
     }
 
 
@@ -322,7 +358,7 @@ public class ResourceManagerImpl implements ResourceManager
     public int queryCarsPrice(int id, String location)
         throws RemoteException
     {
-        return queryPrice(id, Car.getKey(location));
+        return carRM.queryCarsPrice(id, location);
     }
 
     // Returns data structure containing customer reservation info. Returns null if the
@@ -448,7 +484,7 @@ public class ResourceManagerImpl implements ResourceManager
     public boolean reserveCar(int id, int customerID, String location)
         throws RemoteException
     {
-        return reserveItem(id, customerID, Car.getKey(location), location);
+        return carRM.reserveCar(id, customerID, location);
     }
 
 
@@ -456,14 +492,9 @@ public class ResourceManagerImpl implements ResourceManager
     public boolean reserveRoom(int id, int customerID, String location)
         throws RemoteException
     {
-        return reserveItem(id, customerID, Hotel.getKey(location), location);
+        return hotelRM.reserveRoom(id, customerID, location);
     }
-    // Adds flight reservation to this customer.  
-    public boolean reserveFlight(int id, int customerID, int flightNum)
-        throws RemoteException
-    {
-        return reserveItem(id, customerID, Flight.getKey(flightNum), String.valueOf(flightNum));
-    }
+
     
     // Reserve an itinerary 
     public boolean itinerary(int id,int customer,Vector flightNumbers,String location,boolean Car,boolean Room)
@@ -473,3 +504,4 @@ public class ResourceManagerImpl implements ResourceManager
     }
 
 }
+
