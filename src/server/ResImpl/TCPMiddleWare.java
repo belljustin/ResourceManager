@@ -45,7 +45,9 @@ public class TCPMiddleWare implements ResourceManager
     public static void main(String args[]) {
         // Figure out where server is running
         String carHost, hotelHost, flightHost = "localhost";
-        int carPort, hotelPort, flightPort = 1099;
+        int carPort = 8081;
+        int hotelPort = 8082;
+        int flightPort = 8083;
 
         if (args.length != 6) {
             System.err.println ("Wrong usage");
