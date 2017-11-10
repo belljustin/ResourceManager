@@ -357,25 +357,41 @@ public class MiddleWare implements ResourceManager
 
     // return a bill
     public String queryCustomerInfo(int id, int customerID)
-        throws RemoteException
-    {
-        Trace.info("RM::queryCustomerInfo(" + id + ", " + customerID + ") called" );
-        Customer cust = (Customer) readData( id, Customer.getKey(customerID) );
-        if ( cust == null ) {
-            Trace.warn("RM::queryCustomerInfo(" + id + ", " + customerID + ") failed--customer doesn't exist" );
-            return "";   // NOTE: don't change this--WC counts on this value indicating a customer does not exist...
-        } else {
-                String s = cust.printBill();
-                Trace.info("RM::queryCustomerInfo(" + id + ", " + customerID + "), bill follows..." );
-                System.out.println( s );
-                return s;
-        } // if
+
+        throws RemoteException{
+//    {
+//        Trace.info("RM::queryCustomerInfo(" + id + ", " + customerID + ") called" );
+//        Customer cust = (Customer) readData( id, Customer.getKey(customerID) );
+//        if ( cust == null ) {
+//            Trace.warn("RM::queryCustomerInfo(" + id + ", " + customerID + ") failed--customer doesn't exist" );
+//            return "";   // NOTE: don't change this--WC counts on this value indicating a customer does not exist...
+//        } else {
+//                String s = cust.printBill();
+//                Trace.info("RM::queryCustomerInfo(" + id + ", " + customerID + "), bill follows..." );
+//                System.out.println( s );
+//                return s;
+//        } // if
+    	String toReturn;
+        String A = hotelRM.queryCustomerInfo(id, customerID);
+    	String B = carRM.queryCustomerInfo(id, customerID);
+    	String C = flightRM.queryCustomerInfo(id, customerID);
+    	if( A.isEmpty() && B.isEmpty() && C.isEmpty()){
+    		Trace.warn("RM::queryCustomerInfo(" + id + ", " + customerID + ") failed--customer doesn't exist" );
+    		toReturn = "\n RM::queryCustomerInfo(" + id + ", " + customerID + ") failed--customer doesn't exist" ;
+    		return ("\n" + toReturn);
+    	}
+    	A = ("Hotel: " + A + "\n");
+    	B = ("Car: " + B + "\n");
+    	C = ("Flight: " + C + "\n");
+    	toReturn = A+B+C;
+
+    	return ("\n" + toReturn);
     }
 
     // customer functions
     // new customer just returns a unique customer identifier
     
-    public int newCustomer(int id)
+    public synchronized int newCustomer(int id)
         throws RemoteException
     {
         Trace.info("INFO: RM::newCustomer(" + id + ") called" );
@@ -386,11 +402,14 @@ public class MiddleWare implements ResourceManager
         Customer cust = new Customer( cid );
         writeData( id, cust.getKey(), cust );
         Trace.info("RM::newCustomer(" + cid + ") returns ID=" + cid );
+        hotelRM.newCustomer(id, cid);
+        carRM.newCustomer(id, cid);
+        flightRM.newCustomer(id, cid);
         return cid;
     }
 
-    // I opted to pass in customerID instead. This makes testing easier
-    public boolean newCustomer(int id, int customerID )
+
+    public synchronized boolean newCustomer(int id, int customerID )
         throws RemoteException
     {
         Trace.info("INFO: RM::newCustomer(" + id + ", " + customerID + ") called" );
@@ -399,6 +418,9 @@ public class MiddleWare implements ResourceManager
             cust = new Customer(customerID);
             writeData( id, cust.getKey(), cust );
             Trace.info("INFO: RM::newCustomer(" + id + ", " + customerID + ") created a new customer" );
+            hotelRM.newCustomer(id, customerID);
+            carRM.newCustomer(id, customerID);
+            flightRM.newCustomer(id, customerID);
             return true;
         } else {
             Trace.info("INFO: RM::newCustomer(" + id + ", " + customerID + ") failed--customer already exists");
@@ -408,7 +430,7 @@ public class MiddleWare implements ResourceManager
 
 
     // Deletes customer from the database. 
-    public boolean deleteCustomer(int id, int customerID)
+    public synchronized boolean deleteCustomer(int id, int customerID)
         throws RemoteException
     {
         Trace.info("RM::deleteCustomer(" + id + ", " + customerID + ") called" );
@@ -433,6 +455,9 @@ public class MiddleWare implements ResourceManager
             removeData(id, cust.getKey());
             
             Trace.info("RM::deleteCustomer(" + id + ", " + customerID + ") succeeded" );
+            hotelRM.deleteCustomer(id, customerID);
+            carRM.deleteCustomer(id, customerID);
+            flightRM.deleteCustomer(id, customerID);
             return true;
         } // if
     }
@@ -478,8 +503,40 @@ public class MiddleWare implements ResourceManager
     public boolean itinerary(int id,int customer,Vector flightNumbers,String location,boolean Car,boolean Room)
         throws RemoteException
     {
-        return false;
+    	boolean flag = true;
+    	boolean carFlag = true;
+    	boolean hotelFlag = true;
+    	Vector<String> flightParams = flightNumbers;
+    	for(String flightNumber: flightParams) {
+    		int number = Integer.parseInt(flightNumber);
+    		boolean temp = flightRM.reserveFlight(id, customer, number);
+    		if(temp == false){
+    			flag = false;
+    		}
+    	}
+    	if (Car) {
+    		carFlag = carRM.reserveCar(id, customer, location);
+    	}
+    	
+    	if (Room) {
+    		hotelFlag = hotelRM.reserveRoom(id, customer, location);
+    	}
+    	
+    	
+    	
+     return (flag && carFlag && hotelFlag);
     }
+    
+//	public Boolean checkNumeric(String msg) {
+//		boolean toReturn;
+//		try {
+//			int x = (int) Integer.parseInt(msg);
+//			toReturn = true;
+//		} catch (Exception e){
+//			toReturn = false;
+//		}
+//		return toReturn;
+//}
 
 }
 
