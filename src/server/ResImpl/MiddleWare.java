@@ -357,6 +357,7 @@ public class MiddleWare implements ResourceManager
 
     // return a bill
     public String queryCustomerInfo(int id, int customerID)
+
         throws RemoteException{
 //    {
 //        Trace.info("RM::queryCustomerInfo(" + id + ", " + customerID + ") called" );
@@ -407,7 +408,7 @@ public class MiddleWare implements ResourceManager
         return cid;
     }
 
-    // I opted to pass in customerID instead. This makes testing easier
+
     public synchronized boolean newCustomer(int id, int customerID )
         throws RemoteException
     {
