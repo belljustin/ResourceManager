@@ -106,6 +106,8 @@ public class CarManagerImpl implements ResourceManager
     	TxnCopies.remove(txnID);
     	TxnWrites.remove(txnID);
     	TxnDeletes.remove(txnID);
+    	
+    	lm.UnlockAll(txnID);
     	return true;
     }
     
@@ -118,6 +120,8 @@ public class CarManagerImpl implements ResourceManager
     	TxnCopies.remove(txnID);
     	TxnWrites.remove(txnID);
     	TxnDeletes.remove(txnID);
+
+    	lm.UnlockAll(txnID);
     }
      
 
