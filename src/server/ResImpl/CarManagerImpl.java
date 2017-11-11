@@ -7,6 +7,7 @@ package server.ResImpl;
 import server.ResInterface.ResourceManager;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 import LockManager.DeadlockException;
 import LockManager.LockManager;
@@ -25,7 +26,9 @@ public class CarManagerImpl implements ResourceManager
     protected HashMap<Integer, RMHashtable> TxnCopies = new HashMap<Integer, RMHashtable>();
     protected HashMap<Integer, RMHashtable> TxnWrites = new HashMap<Integer, RMHashtable>();
     protected HashMap<Integer, RMHashtable> TxnDeletes = new HashMap<Integer, RMHashtable>();
+    protected ConcurrentHashMap<Integer, Date> TimeToLive = new ConcurrentHashMap<Integer, Date>();
     protected LockManager lm = new LockManager();
+    private static final int TIME_TO_LIVE_IN_MINUTES = 3;  
     
 
     public static void main(String args[]) {
@@ -64,9 +67,44 @@ public class CarManagerImpl implements ResourceManager
             System.setSecurityManager(new RMISecurityManager());
         }
     }
+    
+    public void addTime(int txnID){
+        Calendar now = Calendar.getInstance();
+        now.add(Calendar.MINUTE, TIME_TO_LIVE_IN_MINUTES);
+        Date timeToAdd = now.getTime();
+        TimeToLive.put(txnID, timeToAdd);
+    }
+    
+    public void killTransactions() throws InvalidTransactionException{
+    	Iterator it = TimeToLive.entrySet().iterator();
+    	while(it.hasNext()){
+    		Date currentTime = new Date();
+    		ConcurrentHashMap.Entry pair = (ConcurrentHashMap.Entry) it.next();
+    		int compare = currentTime.compareTo((Date) pair.getValue());
+    		if(compare > 0){
+    			int txnIDtoKill = (int) pair.getKey();
+    			abort(txnIDtoKill);
+    			it.remove();
+    		}
+    	}
+    }
      
     public CarManagerImpl() throws RemoteException {
-    	
+    	  Thread t1 = new Thread(new Runnable() {
+    	         public void run() {
+    	              while(true){
+    	            	  try {
+							killTransactions();
+							Thread.sleep(1000);
+						} catch (Exception e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+    	            	  
+    	              }
+    	         }
+    	    });  
+    	    t1.start();	
     }
     
     public int start(int txnID) {
@@ -77,6 +115,15 @@ public class CarManagerImpl implements ResourceManager
     	TxnDeletes.put(txnID, new RMHashtable());
     	return txnID;
     }
+    
+//    public boolean checkIfCommitPossible(int txnID) throws InvalidTransactionException{
+//      	if (!TxnCopies.containsKey(txnID)) {
+//    		throw new InvalidTransactionException(txnID);
+//    	}
+//    	
+//    	
+//    	return false;
+//    }
     
     public boolean commit(int txnID) throws InvalidTransactionException {
     	// Check if the txn exists

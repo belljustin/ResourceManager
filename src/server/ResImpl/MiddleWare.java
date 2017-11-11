@@ -3,6 +3,7 @@ package server.ResImpl;
 import server.ResInterface.*;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 import LockManager.DeadlockException;
 import LockManager.LockManager;
@@ -28,6 +29,8 @@ public class MiddleWare implements ResourceManager
     protected HashMap<Integer, RMHashtable> TxnWrites = new HashMap<Integer, RMHashtable>();
     protected HashMap<Integer, RMHashtable> TxnDeletes = new HashMap<Integer, RMHashtable>();
     protected LockManager lm = new LockManager();
+    private static final int TIME_TO_LIVE_IN_MINUTES = 3;  
+    protected ConcurrentHashMap<Integer, Date> TimeToLive = new ConcurrentHashMap<Integer, Date>();
     
     public int start() throws RemoteException {
     	int txnID = txnCounter++;
@@ -45,6 +48,28 @@ public class MiddleWare implements ResourceManager
     	
     	return txnID;
     }
+    
+    public void addTime(int txnID){
+        Calendar now = Calendar.getInstance();
+        now.add(Calendar.MINUTE, TIME_TO_LIVE_IN_MINUTES);
+        Date timeToAdd = now.getTime();
+        TimeToLive.put(txnID, timeToAdd);
+    }
+    
+    public void killTransactions() throws InvalidTransactionException, RemoteException{
+    	Iterator it = TimeToLive.entrySet().iterator();
+    	while(it.hasNext()){
+    		Date currentTime = new Date();
+    		ConcurrentHashMap.Entry pair = (ConcurrentHashMap.Entry) it.next();
+    		int compare = currentTime.compareTo((Date) pair.getValue());
+    		if(compare > 0){
+    			int txnIDtoKill = (int) pair.getKey();
+    			abort(txnIDtoKill);
+    			it.remove();
+    		}
+    	}
+    }
+     
     
     // Middleware doesn't start transaction by ID
     public int start(int txnID) throws RemoteException {
@@ -126,6 +151,22 @@ public class MiddleWare implements ResourceManager
             } catch (Exception e) {
             	System.out.println("Exception: " + e.toString());
             }
+            
+      	  Thread t1 = new Thread(new Runnable() {
+ 	         public void run() {
+ 	              while(true){
+ 	            	  try {
+							middleWare.killTransactions();
+							Thread.sleep(1000);
+						} catch (Exception e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+ 	            	  
+ 	              }
+ 	         }
+ 	    });  
+ 	    t1.start();	 
   
 
     
