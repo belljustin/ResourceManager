@@ -33,7 +33,7 @@ public class MiddleWare implements ResourceManager
     	int txnID = txnCounter++;
 
     	// Create a copy of the official HT for this txn
-    	TxnCopies.put(txnID, m_itemHT);
+    	TxnCopies.put(txnID, m_itemHT.deepCopy());
     	// Create an empty write set for this txn
     	TxnWrites.put(txnID, new RMHashtable());
     	TxnDeletes.put(txnID, new RMHashtable());
@@ -75,7 +75,7 @@ public class MiddleWare implements ResourceManager
     	
     	// Remove write set and copy of stale txn
     	TxnCopies.remove(txnID);
-    	TxnWrites.remove(txnID);
+    	// TxnWrites.remove(txnID);
     	TxnDeletes.remove(txnID);
     	
     	// Commit the transaction in all the other RMs
@@ -94,7 +94,7 @@ public class MiddleWare implements ResourceManager
 
     	// Remove write set and copy of stale txn
     	TxnCopies.remove(txnID);
-    	TxnWrites.remove(txnID);
+    	// TxnWrites.remove(txnID);
     	TxnDeletes.remove(txnID);
 
     	// Commit the transaction in all the other RMs
@@ -219,31 +219,47 @@ public class MiddleWare implements ResourceManager
      
 
     // Reads a data item
-    private RMItem readData( int id, String key )
+    private RMItem readData( int id, String key ) throws DeadlockException
     {
-        synchronized(m_itemHT) {
-            return (RMItem) m_itemHT.get(key);
-        }
+    	lm.Lock(id, key, LockManager.READ);
+    	RMHashtable copy = TxnCopies.get(id);
+		synchronized(copy) {
+			return (RMItem) copy.get(key);
+		}
     }
 
     // Writes a data item
-    private void writeData( int id, String key, RMItem value )
+    private void writeData( int id, String key, RMItem value ) throws DeadlockException
     {
-        synchronized(m_itemHT) {
-            m_itemHT.put(key, value);
+    	lm.Lock(id, key, LockManager.WRITE);
+    	RMHashtable copy = TxnCopies.get(id);
+		synchronized(copy) {
+			copy.put(key, value);
+		}
+
+    	RMHashtable writes = TxnWrites.get(id);
+        synchronized(writes) {
+            writes.put(key, value);
         }
     }
     
     // Remove the item out of storage
-    protected RMItem removeData(int id, String key) {
-        synchronized(m_itemHT) {
-            return (RMItem)m_itemHT.remove(key);
+    protected RMItem removeData(int id, String key) throws DeadlockException {
+    	lm.Lock(id, key, LockManager.WRITE);
+    	RMHashtable deletes = TxnDeletes.get(id);
+        synchronized(deletes) {
+        	deletes.put(key, null);
         }
+
+    	RMHashtable copy = TxnCopies.get(id);
+		synchronized(copy) {
+			return (RMItem) copy.remove(key);
+		}
     }
     
     
     // deletes the entire item
-    protected boolean deleteItem(int id, String key)
+    protected boolean deleteItem(int id, String key) throws DeadlockException
     {
         Trace.info("RM::deleteItem(" + id + ", " + key + ") called" );
         ReservableItem curObj = (ReservableItem) readData( id, key );
@@ -266,7 +282,7 @@ public class MiddleWare implements ResourceManager
     
 
     // query the number of available seats/rooms/cars
-    protected int queryNum(int id, String key) {
+    protected int queryNum(int id, String key) throws DeadlockException {
         Trace.info("RM::queryNum(" + id + ", " + key + ") called" );
         ReservableItem curObj = (ReservableItem) readData( id, key);
         int value = 0;  
@@ -278,7 +294,7 @@ public class MiddleWare implements ResourceManager
     }    
     
     // query the price of an item
-    protected int queryPrice(int id, String key) {
+    protected int queryPrice(int id, String key) throws DeadlockException {
         Trace.info("RM::queryCarsPrice(" + id + ", " + key + ") called" );
         ReservableItem curObj = (ReservableItem) readData( id, key);
         int value = 0; 
@@ -290,7 +306,7 @@ public class MiddleWare implements ResourceManager
     }
     
     // reserve an item
-    protected boolean reserveItem(int id, int customerID, String key, String location) {
+    protected boolean reserveItem(int id, int customerID, String key, String location) throws DeadlockException {
         Trace.info("RM::reserveItem( " + id + ", customer=" + customerID + ", " +key+ ", "+location+" ) called" );        
         // Read customer object if it exists (and read lock it)
         Customer cust = (Customer) readData( id, Customer.getKey(customerID) );        
