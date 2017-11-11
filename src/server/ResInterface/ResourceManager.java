@@ -7,6 +7,7 @@ import java.rmi.RemoteException;
 import java.util.*;
 
 import LockManager.DeadlockException;
+import server.ResImpl.InvalidTransactionException;
 /** 
  * Simplified version from CSE 593 Univ. of Washington
  *
@@ -134,4 +135,15 @@ public interface ResourceManager extends Remote
     public boolean itinerary(int id,int customer,Vector<String> flightNumbers,String location, boolean Car, boolean Room)
 	throws RemoteException, DeadlockException; 
     			
+    /*
+     * Transaction methods
+     */
+
+    public int start(int txnId) throws RemoteException;
+    
+    public int start() throws RemoteException;
+    
+    public boolean commit(int txnId) throws RemoteException, InvalidTransactionException;
+    
+    public void abort(int txnID) throws RemoteException, InvalidTransactionException;
 }

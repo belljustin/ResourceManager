@@ -5,6 +5,7 @@ import server.ResInterface.*;
 import java.util.*;
 
 import LockManager.DeadlockException;
+import LockManager.LockManager;
 
 import java.rmi.registry.Registry;
 import java.rmi.registry.LocateRegistry;
@@ -21,7 +22,88 @@ public class MiddleWare implements ResourceManager
 	private Registry registry;
     
     protected RMHashtable m_itemHT = new RMHashtable();
+    protected volatile int txnCounter = 0;
+    
+    protected HashMap<Integer, RMHashtable> TxnCopies = new HashMap<Integer, RMHashtable>();
+    protected HashMap<Integer, RMHashtable> TxnWrites = new HashMap<Integer, RMHashtable>();
+    protected HashMap<Integer, RMHashtable> TxnDeletes = new HashMap<Integer, RMHashtable>();
+    protected LockManager lm = new LockManager();
+    
+    public int start() throws RemoteException {
+    	int txnID = txnCounter++;
 
+    	// Create a copy of the official HT for this txn
+    	TxnCopies.put(txnID, m_itemHT);
+    	// Create an empty write set for this txn
+    	TxnWrites.put(txnID, new RMHashtable());
+    	TxnDeletes.put(txnID, new RMHashtable());
+    	
+    	// Start the transaction in all the other RMs
+    	flightRM.start(txnID);
+    	carRM.start(txnID);
+    	hotelRM.start(txnID);
+    	
+    	return txnID;
+    }
+    
+    // Middleware doesn't start transaction by ID
+    public int start(int txnID) throws RemoteException {
+    	throw new RemoteException("Not implmented");
+    }
+    
+    public boolean commit(int txnID) throws InvalidTransactionException, RemoteException {
+    	// Check if the txn exists
+    	if (!TxnCopies.containsKey(txnID)) {
+    		throw new InvalidTransactionException(txnID);
+    	}
+
+    	synchronized(m_itemHT) {
+			// Add all the writes from txn write set to offical HT
+			RMHashtable writes = TxnWrites.get(txnID);
+			Set<String> keys = writes.keySet();
+			for(String key: keys) {
+				m_itemHT.put(key, writes.get(key));
+			}
+
+			// Delete all the deletes from txn delete set from official HT
+			RMHashtable deletes = TxnDeletes.get(txnID);
+			keys = deletes.keySet();
+			for(String key: keys) {
+				m_itemHT.remove(key);
+			}
+    	}
+    	
+    	// Remove write set and copy of stale txn
+    	TxnCopies.remove(txnID);
+    	TxnWrites.remove(txnID);
+    	TxnDeletes.remove(txnID);
+    	
+    	// Commit the transaction in all the other RMs
+    	flightRM.commit(txnID);
+    	carRM.commit(txnID);
+    	hotelRM.commit(txnID);
+    	
+    	lm.UnlockAll(txnID);
+    	return true;
+    }
+    
+    public void abort(int txnID) throws InvalidTransactionException, RemoteException {
+    	if (!TxnCopies.containsKey(txnID)) {
+    		throw new InvalidTransactionException(txnID);
+    	}
+
+    	// Remove write set and copy of stale txn
+    	TxnCopies.remove(txnID);
+    	TxnWrites.remove(txnID);
+    	TxnDeletes.remove(txnID);
+
+    	// Commit the transaction in all the other RMs
+    	flightRM.abort(txnID);
+    	carRM.abort(txnID);
+    	hotelRM.abort(txnID);
+
+    	lm.UnlockAll(txnID);
+    }
 
     public static void main(String args[]) {
         // Figure out where server is running

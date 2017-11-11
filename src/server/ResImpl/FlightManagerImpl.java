@@ -21,7 +21,6 @@ public class FlightManagerImpl implements ResourceManager
 {
     
     protected RMHashtable m_itemHT = new RMHashtable();
-    protected volatile int txnCounter = 0;
     
     protected HashMap<Integer, RMHashtable> TxnCopies = new HashMap<Integer, RMHashtable>();
     protected HashMap<Integer, RMHashtable> TxnWrites = new HashMap<Integer, RMHashtable>();
@@ -70,8 +69,7 @@ public class FlightManagerImpl implements ResourceManager
     	
     }
     
-    public int start() {
-    	int txnID = txnCounter++;
+    public int start(int txnID) {
     	// Create a copy of the official HT for this txn
     	TxnCopies.put(txnID, m_itemHT);
     	// Create an empty write set for this txn
@@ -553,5 +551,10 @@ public class FlightManagerImpl implements ResourceManager
     {
         return false;
     }
+
+    // Middleware handles setting transaction ID
+	public int start() throws RemoteException {
+		throw new RemoteException("Not Implemented");
+	}
 
 }
