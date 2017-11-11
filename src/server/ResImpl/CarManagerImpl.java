@@ -18,7 +18,12 @@ public class CarManagerImpl implements ResourceManager
 {
     
     protected RMHashtable m_itemHT = new RMHashtable();
-
+    protected volatile int txnCounter = 0;
+    
+    protected HashMap<Integer, RMHashtable> TxnCopies;
+    protected HashMap<Integer, RMHashtable> TxnWrites;
+    protected HashMap<Integer, RMHashtable> TxnDeletes;
+    
 
     public static void main(String args[]) {
         // Figure out where server is running
@@ -59,6 +64,56 @@ public class CarManagerImpl implements ResourceManager
      
     public CarManagerImpl() throws RemoteException {
     }
+    
+    public int start() {
+    	int txnID = txnCounter++;
+    	// Create a copy of the official HT for this txn
+    	TxnCopies.put(txnID, m_itemHT);
+    	// Create an empty write set for this txn
+    	TxnWrites.put(txnID, new RMHashtable());
+    	TxnDeletes.put(txnID, new RMHashtable());
+    	return txnID;
+    }
+    
+    public boolean commit(int txnID) throws InvalidTransactionException {
+    	// Check if the txn exists
+    	if (!TxnCopies.containsKey(txnID)) {
+    		throw new InvalidTransactionException(txnID);
+    	}
+
+    	synchronized(m_itemHT) {
+			// Add all the writes from txn write set to offical HT
+			RMHashtable writes = TxnWrites.get(txnID);
+			Set<String> keys = writes.keySet();
+			for(String key: keys) {
+				m_itemHT.put(key, writes.get(key));
+			}
+
+			// Delete all the deletes from txn delete set from official HT
+			RMHashtable deletes = TxnDeletes.get(txnID);
+			keys = deletes.keySet();
+			for(String key: keys) {
+				m_itemHT.remove(key);
+			}
+    	}
+    	
+    	// Remove write set and copy of stale txn
+    	TxnCopies.remove(txnID);
+    	TxnWrites.remove(txnID);
+    	TxnDeletes.remove(txnID);
+    	return true;
+    }
+    
+    public void abort(int txnID) throws InvalidTransactionException {
+    	if (!TxnCopies.containsKey(txnID)) {
+    		throw new InvalidTransactionException(txnID);
+    	}
+
+    	// Remove write set and copy of stale txn
+    	TxnCopies.remove(txnID);
+    	TxnWrites.remove(txnID);
+    	TxnDeletes.remove(txnID);
+    }
      
 
     // Reads a data item
@@ -76,6 +131,7 @@ public class CarManagerImpl implements ResourceManager
             m_itemHT.put(key, value);
         }
     }
+
     
     // Remove the item out of storage
     protected RMItem removeData(int id, String key) {
