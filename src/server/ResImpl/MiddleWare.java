@@ -4,6 +4,8 @@ import server.ResInterface.*;
 
 import java.util.*;
 
+import LockManager.DeadlockException;
+
 import java.rmi.registry.Registry;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.RemoteException;
@@ -116,19 +118,19 @@ public class MiddleWare implements ResourceManager
     
     // Adds flight reservation to this customer.  
     public boolean reserveFlight(int id, int customerID, int flightNum)
-        throws RemoteException
+        throws RemoteException, DeadlockException
     {
         return flightRM.reserveFlight(id, customerID, flightNum);
     }
     
     // Create a new flight, or add seats to existing flight
     //  NOTE: if flightPrice <= 0 and the flight already exists, it maintains its current price
-    public boolean addFlight(int id, int flightNum, int flightSeats, int flightPrice) throws RemoteException {
+    public boolean addFlight(int id, int flightNum, int flightSeats, int flightPrice) throws RemoteException, DeadlockException {
     	return flightRM.addFlight(id, flightNum, flightSeats, flightPrice);
 
     }
     
-    public boolean deleteFlight(int id, int flightNum) throws RemoteException
+    public boolean deleteFlight(int id, int flightNum) throws RemoteException, DeadlockException
     {
         return flightRM.deleteFlight(id, flightNum);
     }
@@ -247,14 +249,14 @@ public class MiddleWare implements ResourceManager
     // Create a new room location or add rooms to an existing location
     //  NOTE: if price <= 0 and the room location already exists, it maintains its current price
     public boolean addRooms(int id, String location, int count, int price)
-        throws RemoteException
+        throws RemoteException, DeadlockException
     {
      return hotelRM.addRooms(id, location, count, price);
     }
 
     // Delete rooms from a location
     public boolean deleteRooms(int id, String location)
-        throws RemoteException
+        throws RemoteException, DeadlockException
     {
         return hotelRM.deleteRooms(id, location);
     }
@@ -262,7 +264,7 @@ public class MiddleWare implements ResourceManager
     // Create a new car location or add cars to an existing location
     //  NOTE: if price <= 0 and the location already exists, it maintains its current price
     public boolean addCars(int id, String location, int count, int price)
-        throws RemoteException
+        throws RemoteException, DeadlockException
     {
     	return carRM.addCars(id, location, count, price);
     }
@@ -270,7 +272,7 @@ public class MiddleWare implements ResourceManager
 
     // Delete cars from a location
     public boolean deleteCars(int id, String location)
-        throws RemoteException
+        throws RemoteException, DeadlockException
     {
         return carRM.deleteCars(id, location);
     }
@@ -279,7 +281,7 @@ public class MiddleWare implements ResourceManager
 
     // Returns the number of empty seats on this flight
     public int queryFlight(int id, int flightNum)
-        throws RemoteException
+        throws RemoteException, DeadlockException
     {
         return flightRM.queryFlight(id, flightNum);
     }
@@ -300,7 +302,7 @@ public class MiddleWare implements ResourceManager
 
     // Returns price of this flight
     public int queryFlightPrice(int id, int flightNum )
-        throws RemoteException
+        throws RemoteException, DeadlockException
     {
         return flightRM.queryFlightPrice(id, flightNum);
     }
@@ -308,7 +310,7 @@ public class MiddleWare implements ResourceManager
 
     // Returns the number of rooms available at a location
     public int queryRooms(int id, String location)
-        throws RemoteException
+        throws RemoteException, DeadlockException
     {
         return hotelRM.queryRooms(id, location);
     }
@@ -318,7 +320,7 @@ public class MiddleWare implements ResourceManager
     
     // Returns room price at this location
     public int queryRoomsPrice(int id, String location)
-        throws RemoteException
+        throws RemoteException, DeadlockException
     {
         return hotelRM.queryRoomsPrice(id, location);
     }
@@ -326,7 +328,7 @@ public class MiddleWare implements ResourceManager
 
     // Returns the number of cars available at a location
     public int queryCars(int id, String location)
-        throws RemoteException
+        throws RemoteException, DeadlockException
     {
         return carRM.queryCars(id, location);
     }
@@ -334,7 +336,7 @@ public class MiddleWare implements ResourceManager
 
     // Returns price of cars at this location
     public int queryCarsPrice(int id, String location)
-        throws RemoteException
+        throws RemoteException, DeadlockException
     {
         return carRM.queryCarsPrice(id, location);
     }
@@ -343,7 +345,7 @@ public class MiddleWare implements ResourceManager
     //  customer doesn't exist. Returns empty RMHashtable if customer exists but has no
     //  reservations.
     public RMHashtable getCustomerReservations(int id, int customerID)
-        throws RemoteException
+        throws RemoteException, DeadlockException
     {
         Trace.info("RM::getCustomerReservations(" + id + ", " + customerID + ") called" );
         Customer cust = (Customer) readData( id, Customer.getKey(customerID) );
@@ -357,8 +359,7 @@ public class MiddleWare implements ResourceManager
 
     // return a bill
     public String queryCustomerInfo(int id, int customerID)
-
-        throws RemoteException{
+        throws RemoteException, DeadlockException{
 //    {
 //        Trace.info("RM::queryCustomerInfo(" + id + ", " + customerID + ") called" );
 //        Customer cust = (Customer) readData( id, Customer.getKey(customerID) );
@@ -392,7 +393,7 @@ public class MiddleWare implements ResourceManager
     // new customer just returns a unique customer identifier
     
     public synchronized int newCustomer(int id)
-        throws RemoteException
+        throws RemoteException, DeadlockException
     {
         Trace.info("INFO: RM::newCustomer(" + id + ") called" );
         // Generate a globally unique ID for the new customer
@@ -408,9 +409,9 @@ public class MiddleWare implements ResourceManager
         return cid;
     }
 
-
+    // I opted to pass in customerID instead. This makes testing easier
     public synchronized boolean newCustomer(int id, int customerID )
-        throws RemoteException
+        throws RemoteException, DeadlockException
     {
         Trace.info("INFO: RM::newCustomer(" + id + ", " + customerID + ") called" );
         Customer cust = (Customer) readData( id, Customer.getKey(customerID) );
@@ -431,7 +432,7 @@ public class MiddleWare implements ResourceManager
 
     // Deletes customer from the database. 
     public synchronized boolean deleteCustomer(int id, int customerID)
-        throws RemoteException
+        throws RemoteException, DeadlockException
     {
         Trace.info("RM::deleteCustomer(" + id + ", " + customerID + ") called" );
         Customer cust = (Customer) readData( id, Customer.getKey(customerID) );
@@ -485,7 +486,7 @@ public class MiddleWare implements ResourceManager
     
     // Adds car reservation to this customer. 
     public boolean reserveCar(int id, int customerID, String location)
-        throws RemoteException
+        throws RemoteException, DeadlockException
     {
         return carRM.reserveCar(id, customerID, location);
     }
@@ -493,7 +494,7 @@ public class MiddleWare implements ResourceManager
 
     // Adds room reservation to this customer. 
     public boolean reserveRoom(int id, int customerID, String location)
-        throws RemoteException
+        throws RemoteException, DeadlockException
     {
         return hotelRM.reserveRoom(id, customerID, location);
     }
@@ -501,7 +502,7 @@ public class MiddleWare implements ResourceManager
     
     // Reserve an itinerary 
     public boolean itinerary(int id,int customer,Vector flightNumbers,String location,boolean Car,boolean Room)
-        throws RemoteException
+        throws RemoteException, DeadlockException
     {
     	boolean flag = true;
     	boolean carFlag = true;
