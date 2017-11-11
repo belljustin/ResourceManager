@@ -125,17 +125,24 @@ public class CarManagerImpl implements ResourceManager
     private RMItem readData( int id, String key ) throws DeadlockException
     {
     	lm.Lock(id, key, LockManager.READ);
-        synchronized(m_itemHT) {
-            return (RMItem) m_itemHT.get(key);
-        }
+    	RMHashtable copy = TxnCopies.get(id);
+		synchronized(copy) {
+			return (RMItem) copy.get(key);
+		}
     }
 
     // Writes a data item
     private void writeData( int id, String key, RMItem value ) throws DeadlockException
     {
     	lm.Lock(id, key, LockManager.WRITE);
-        synchronized(m_itemHT) {
-            m_itemHT.put(key, value);
+    	RMHashtable copy = TxnCopies.get(id);
+		synchronized(copy) {
+			copy.put(key, value);
+		}
+
+    	RMHashtable writes = TxnWrites.get(id);
+        synchronized(writes) {
+            writes.put(key, value);
         }
     }
 
@@ -143,9 +150,15 @@ public class CarManagerImpl implements ResourceManager
     // Remove the item out of storage
     protected RMItem removeData(int id, String key) throws DeadlockException {
     	lm.Lock(id, key, LockManager.WRITE);
-        synchronized(m_itemHT) {
-            return (RMItem)m_itemHT.remove(key);
+    	RMHashtable deletes = TxnDeletes.get(id);
+        synchronized(deletes) {
+        	deletes.put(key, null);
         }
+
+    	RMHashtable copy = TxnCopies.get(id);
+		synchronized(copy) {
+			return (RMItem) copy.remove(key);
+		}
     }
     
     
