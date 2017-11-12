@@ -1,6 +1,8 @@
+package Test;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.concurrent.locks.Lock;
 
@@ -48,6 +50,27 @@ public class CSVTestWriter {
 		sb.append("NO KEY");
 		sb.append(pMethodName);
 		sb.append(pLayer);
+		synchronized(printWriterLock){
+			pw.write(sb.toString());	
+		}
+				
+	}
+	
+	public void addData(ArrayList<TestData> pList){
+		StringBuilder sb = new StringBuilder();
+		for(TestData i : pList){
+			sb.append(i.txnID);
+			sb.append(",");
+			sb.append(i.time);
+			sb.append(",");
+			sb.append(i.akey);
+			sb.append(",");
+			sb.append(i.methodName);
+			sb.append(",");
+			sb.append(i.layer);
+			sb.append("\n");
+		}
+		
 		synchronized(printWriterLock){
 			pw.write(sb.toString());	
 		}

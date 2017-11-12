@@ -7,6 +7,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import LockManager.DeadlockException;
 import LockManager.LockManager;
+import Test.TestData;
 
 import java.rmi.registry.Registry;
 import java.rmi.registry.LocateRegistry;
@@ -21,6 +22,7 @@ public class MiddleWare implements ResourceManager
 	private ResourceManager carRM;
 	private ResourceManager hotelRM;
 	private Registry registry;
+	private ArrayList<TestData> MWTestData = new ArrayList<TestData>();
     
     protected RMHashtable m_itemHT = new RMHashtable();
     protected volatile int txnCounter = 0;
@@ -435,8 +437,13 @@ public class MiddleWare implements ResourceManager
     public boolean addCars(int id, String location, int count, int price)
         throws RemoteException, DeadlockException
     {
+    	Date currentStarttime = new Date();
     	addTime(id);
-    	return carRM.addCars(id, location, count, price);
+    	boolean valToReturn = carRM.addCars(id, location, count, price);
+    	Date currentEndTime = new Date();
+    	TestData itemToAdd = new TestData(id, currentStarttime, currentEndTime, "addCars", "MiddleWare");
+    	MWTestData.add(itemToAdd);
+    	return valToReturn;
     }
 
 
