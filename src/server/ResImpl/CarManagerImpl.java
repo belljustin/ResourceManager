@@ -7,6 +7,7 @@ package server.ResImpl;
 import server.ResInterface.ResourceManager;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 import LockManager.DeadlockException;
 import LockManager.LockManager;
@@ -21,12 +22,13 @@ public class CarManagerImpl implements ResourceManager
 {
     
     protected RMHashtable m_itemHT = new RMHashtable();
-    protected volatile int txnCounter = 0;
     
     protected HashMap<Integer, RMHashtable> TxnCopies = new HashMap<Integer, RMHashtable>();
     protected HashMap<Integer, RMHashtable> TxnWrites = new HashMap<Integer, RMHashtable>();
     protected HashMap<Integer, RMHashtable> TxnDeletes = new HashMap<Integer, RMHashtable>();
+    protected ConcurrentHashMap<Integer, Date> TimeToLive = new ConcurrentHashMap<Integer, Date>();
     protected LockManager lm = new LockManager();
+    private static final int TIME_TO_LIVE_IN_MINUTES = 3;  
     
 
     public static void main(String args[]) {
@@ -65,20 +67,63 @@ public class CarManagerImpl implements ResourceManager
             System.setSecurityManager(new RMISecurityManager());
         }
     }
-     
-    public CarManagerImpl() throws RemoteException {
-    	
+    
+    public void addTime(int txnID){
+        Calendar now = Calendar.getInstance();
+        now.add(Calendar.MINUTE, TIME_TO_LIVE_IN_MINUTES);
+        Date timeToAdd = now.getTime();
+        TimeToLive.put(txnID, timeToAdd);
     }
     
-    public int start() {
-    	int txnID = txnCounter++;
+    public void killTransactions() throws InvalidTransactionException{
+    	Iterator it = TimeToLive.entrySet().iterator();
+    	while(it.hasNext()){
+    		Date currentTime = new Date();
+    		ConcurrentHashMap.Entry pair = (ConcurrentHashMap.Entry) it.next();
+    		int compare = currentTime.compareTo((Date) pair.getValue());
+    		if(compare > 0){
+    			int txnIDtoKill = (int) pair.getKey();
+    			abort(txnIDtoKill);
+    			it.remove();
+    		}
+    	}
+    }
+     
+    public CarManagerImpl() throws RemoteException {
+    	  Thread t1 = new Thread(new Runnable() {
+    	         public void run() {
+    	              while(true){
+    	            	  try {
+							killTransactions();
+							Thread.sleep(1000);
+						} catch (Exception e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+    	            	  
+    	              }
+    	         }
+    	    });  
+    	    t1.start();	
+    }
+    
+    public int start(int txnID) {
     	// Create a copy of the official HT for this txn
-    	TxnCopies.put(txnID, m_itemHT);
+    	TxnCopies.put(txnID, m_itemHT.deepCopy());
     	// Create an empty write set for this txn
     	TxnWrites.put(txnID, new RMHashtable());
     	TxnDeletes.put(txnID, new RMHashtable());
     	return txnID;
     }
+    
+//    public boolean checkIfCommitPossible(int txnID) throws InvalidTransactionException{
+//      	if (!TxnCopies.containsKey(txnID)) {
+//    		throw new InvalidTransactionException(txnID);
+//    	}
+//    	
+//    	
+//    	return false;
+//    }
     
     public boolean commit(int txnID) throws InvalidTransactionException {
     	// Check if the txn exists
@@ -104,7 +149,7 @@ public class CarManagerImpl implements ResourceManager
     	
     	// Remove write set and copy of stale txn
     	TxnCopies.remove(txnID);
-    	TxnWrites.remove(txnID);
+    	// TxnWrites.remove(txnID);
     	TxnDeletes.remove(txnID);
     	
     	lm.UnlockAll(txnID);
@@ -118,7 +163,7 @@ public class CarManagerImpl implements ResourceManager
 
     	// Remove write set and copy of stale txn
     	TxnCopies.remove(txnID);
-    	TxnWrites.remove(txnID);
+    	// TxnWrites.remove(txnID);
     	TxnDeletes.remove(txnID);
 
     	lm.UnlockAll(txnID);
@@ -130,6 +175,13 @@ public class CarManagerImpl implements ResourceManager
     {
     	lm.Lock(id, key, LockManager.READ);
     	RMHashtable copy = TxnCopies.get(id);
+    	synchronized (m_itemHT) {
+    		try {
+    			copy.put(key, m_itemHT.get(key));
+    		} catch(NullPointerException e) {
+    			// key doesn't exist yet
+    		}
+    	}
 		synchronized(copy) {
 			return (RMItem) copy.get(key);
 		}
@@ -554,4 +606,8 @@ public class CarManagerImpl implements ResourceManager
         return false;
     }
 
+    // Middleware handles setting the transaction ID
+	public int start() throws RemoteException {
+		throw new RemoteException("Not Implemented");
+	}
 }
