@@ -34,7 +34,7 @@ public class MiddleWare implements ResourceManager
     
     public int start() throws RemoteException {
     	int txnID = txnCounter++;
-    	addTime(txnID);
+    	startTime(txnID);
 
     	// Create a copy of the official HT for this txn
     	TxnCopies.put(txnID, m_itemHT.deepCopy());
@@ -50,11 +50,19 @@ public class MiddleWare implements ResourceManager
     	return txnID;
     }
     
+    public void startTime(int txnID){
+    	   Calendar now = Calendar.getInstance();
+           now.add(Calendar.SECOND, TIME_TO_LIVE_IN_SECONDS);
+           Date timeToAdd = now.getTime();
+           TimeToLive.put(txnID, timeToAdd);
+    }
+    
     public void addTime(int txnID){
-        Calendar now = Calendar.getInstance();
-        now.add(Calendar.SECOND, TIME_TO_LIVE_IN_SECONDS);
-        Date timeToAdd = now.getTime();
-        TimeToLive.put(txnID, timeToAdd);
+        if (TimeToLive.get(txnID) != null){
+        	startTime(txnID);
+        } else{
+        	System.out.println("Transaction does not exist!");
+        }
     }
     
     public void removeTime(int txnID){
@@ -78,7 +86,7 @@ public class MiddleWare implements ResourceManager
     
     // Middleware doesn't start transaction by ID
     public int start(int txnID) throws RemoteException {
-    	addTime(txnID);
+    	startTime(txnID);
     	throw new RemoteException("Not implmented");
     }
     
