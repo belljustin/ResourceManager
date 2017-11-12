@@ -109,7 +109,7 @@ public class CarManagerImpl implements ResourceManager
     
     public int start(int txnID) {
     	// Create a copy of the official HT for this txn
-    	TxnCopies.put(txnID, m_itemHT);
+    	TxnCopies.put(txnID, m_itemHT.deepCopy());
     	// Create an empty write set for this txn
     	TxnWrites.put(txnID, new RMHashtable());
     	TxnDeletes.put(txnID, new RMHashtable());
@@ -149,7 +149,7 @@ public class CarManagerImpl implements ResourceManager
     	
     	// Remove write set and copy of stale txn
     	TxnCopies.remove(txnID);
-    	TxnWrites.remove(txnID);
+    	// TxnWrites.remove(txnID);
     	TxnDeletes.remove(txnID);
     	
     	lm.UnlockAll(txnID);
@@ -163,7 +163,7 @@ public class CarManagerImpl implements ResourceManager
 
     	// Remove write set and copy of stale txn
     	TxnCopies.remove(txnID);
-    	TxnWrites.remove(txnID);
+    	// TxnWrites.remove(txnID);
     	TxnDeletes.remove(txnID);
 
     	lm.UnlockAll(txnID);
