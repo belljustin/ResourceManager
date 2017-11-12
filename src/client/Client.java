@@ -4,8 +4,8 @@ import server.ResInterface.*;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.RMISecurityManager;
-
 import java.util.*;
+import LockManager.DeadlockException;
 import java.io.*;
 
     
@@ -127,10 +127,21 @@ public class Client
             else
                 System.out.println("Flight could not be added");
             }
+            catch (DeadlockException e) {
+              System.out.println("DEADLOCK EXCEPTION:");
+              System.out.println("A deadlock prevented command execution");
+              System.out.println("Your transaction has been aborted");
+              try {
+                rm.abort(txnId);
+              } catch (Exception e1) {
+                e.printStackTrace();
+              }
+              txnId = -1;
+            }
             catch(Exception e){
-            System.out.println("EXCEPTION:");
-            System.out.println(e.getMessage());
-            e.printStackTrace();
+              System.out.println("EXCEPTION:");
+              System.out.println(e.getMessage());
+              e.printStackTrace();
             }
             break;
             
@@ -152,6 +163,17 @@ public class Client
                 System.out.println("Cars added");
             else
                 System.out.println("Cars could not be added");
+            }
+            catch (DeadlockException e) {
+              System.out.println("DEADLOCK EXCEPTION:");
+              System.out.println("A deadlock prevented command execution");
+              System.out.println("Your transaction has been aborted");
+              try {
+                rm.abort(txnId);
+              } catch (Exception e1) {
+                e.printStackTrace();
+              }
+              txnId = -1;
             }
             catch(Exception e){
             System.out.println("EXCEPTION:");
@@ -179,6 +201,17 @@ public class Client
             else
                 System.out.println("Rooms could not be added");
             }
+            catch (DeadlockException e) {
+              System.out.println("DEADLOCK EXCEPTION:");
+              System.out.println("A deadlock prevented command execution");
+              System.out.println("Your transaction has been aborted");
+              try {
+                rm.abort(txnId);
+              } catch (Exception e1) {
+                e.printStackTrace();
+              }
+              txnId = -1;
+            }
             catch(Exception e){
             System.out.println("EXCEPTION:");
             System.out.println(e.getMessage());
@@ -196,6 +229,17 @@ public class Client
             Id = obj.getInt(arguments.elementAt(1));
             int customer=rm.newCustomer(txnId);
             System.out.println("new customer id:"+customer);
+            }
+            catch (DeadlockException e) {
+              System.out.println("DEADLOCK EXCEPTION:");
+              System.out.println("A deadlock prevented command execution");
+              System.out.println("Your transaction has been aborted");
+              try {
+                rm.abort(txnId);
+              } catch (Exception e1) {
+                e.printStackTrace();
+              }
+              txnId = -1;
             }
             catch(Exception e){
             System.out.println("EXCEPTION:");
@@ -218,6 +262,17 @@ public class Client
                 System.out.println("Flight Deleted");
             else
                 System.out.println("Flight could not be deleted");
+            }
+            catch (DeadlockException e) {
+              System.out.println("DEADLOCK EXCEPTION:");
+              System.out.println("A deadlock prevented command execution");
+              System.out.println("Your transaction has been aborted");
+              try {
+                rm.abort(txnId);
+              } catch (Exception e1) {
+                e.printStackTrace();
+              }
+              txnId = -1;
             }
             catch(Exception e){
             System.out.println("EXCEPTION:");
@@ -242,6 +297,17 @@ public class Client
             else
                 System.out.println("Cars could not be deleted");
             }
+            catch (DeadlockException e) {
+              System.out.println("DEADLOCK EXCEPTION:");
+              System.out.println("A deadlock prevented command execution");
+              System.out.println("Your transaction has been aborted");
+              try {
+                rm.abort(txnId);
+              } catch (Exception e1) {
+                e.printStackTrace();
+              }
+              txnId = -1;
+            }
             catch(Exception e){
             System.out.println("EXCEPTION:");
             System.out.println(e.getMessage());
@@ -263,6 +329,17 @@ public class Client
                 System.out.println("Rooms Deleted");
             else
                 System.out.println("Rooms could not be deleted");
+            }
+            catch (DeadlockException e) {
+              System.out.println("DEADLOCK EXCEPTION:");
+              System.out.println("A deadlock prevented command execution");
+              System.out.println("Your transaction has been aborted");
+              try {
+                rm.abort(txnId);
+              } catch (Exception e1) {
+                e.printStackTrace();
+              }
+              txnId = -1;
             }
             catch(Exception e){
             System.out.println("EXCEPTION:");
@@ -286,6 +363,17 @@ public class Client
             else
                 System.out.println("Customer could not be deleted");
             }
+            catch (DeadlockException e) {
+              System.out.println("DEADLOCK EXCEPTION:");
+              System.out.println("A deadlock prevented command execution");
+              System.out.println("Your transaction has been aborted");
+              try {
+                rm.abort(txnId);
+              } catch (Exception e1) {
+                e.printStackTrace();
+              }
+              txnId = -1;
+            }
             catch(Exception e){
             System.out.println("EXCEPTION:");
             System.out.println(e.getMessage());
@@ -305,6 +393,17 @@ public class Client
             flightNum = obj.getInt(arguments.elementAt(2));
             int seats=rm.queryFlight(txnId,flightNum);
             System.out.println("Number of seats available:"+seats);
+            }
+            catch (DeadlockException e) {
+              System.out.println("DEADLOCK EXCEPTION:");
+              System.out.println("A deadlock prevented command execution");
+              System.out.println("Your transaction has been aborted");
+              try {
+                rm.abort(txnId);
+              } catch (Exception e1) {
+                e.printStackTrace();
+              }
+              txnId = -1;
             }
             catch(Exception e){
             System.out.println("EXCEPTION:");
@@ -326,6 +425,17 @@ public class Client
             numCars=rm.queryCars(txnId,location);
             System.out.println("number of Cars at this location:"+numCars);
             }
+            catch (DeadlockException e) {
+              System.out.println("DEADLOCK EXCEPTION:");
+              System.out.println("A deadlock prevented command execution");
+              System.out.println("Your transaction has been aborted");
+              try {
+                rm.abort(txnId);
+              } catch (Exception e1) {
+                e.printStackTrace();
+              }
+              txnId = -1;
+            }
             catch(Exception e){
             System.out.println("EXCEPTION:");
             System.out.println(e.getMessage());
@@ -345,6 +455,17 @@ public class Client
             location = obj.getString(arguments.elementAt(2));
             numRooms=rm.queryRooms(txnId,location);
             System.out.println("number of Rooms at this location:"+numRooms);
+            }
+            catch (DeadlockException e) {
+              System.out.println("DEADLOCK EXCEPTION:");
+              System.out.println("A deadlock prevented command execution");
+              System.out.println("Your transaction has been aborted");
+              try {
+                rm.abort(txnId);
+              } catch (Exception e1) {
+                e.printStackTrace();
+              }
+              txnId = -1;
             }
             catch(Exception e){
             System.out.println("EXCEPTION:");
@@ -366,6 +487,17 @@ public class Client
             String bill=rm.queryCustomerInfo(txnId,customer);
             System.out.println("Customer info:"+bill);
             }
+            catch (DeadlockException e) {
+              System.out.println("DEADLOCK EXCEPTION:");
+              System.out.println("A deadlock prevented command execution");
+              System.out.println("Your transaction has been aborted");
+              try {
+                rm.abort(txnId);
+              } catch (Exception e1) {
+                e.printStackTrace();
+              }
+              txnId = -1;
+            }
             catch(Exception e){
             System.out.println("EXCEPTION:");
             System.out.println(e.getMessage());
@@ -385,6 +517,17 @@ public class Client
             flightNum = obj.getInt(arguments.elementAt(2));
             price=rm.queryFlightPrice(txnId,flightNum);
             System.out.println("Price of a seat:"+price);
+            }
+            catch (DeadlockException e) {
+              System.out.println("DEADLOCK EXCEPTION:");
+              System.out.println("A deadlock prevented command execution");
+              System.out.println("Your transaction has been aborted");
+              try {
+                rm.abort(txnId);
+              } catch (Exception e1) {
+                e.printStackTrace();
+              }
+              txnId = -1;
             }
             catch(Exception e){
             System.out.println("EXCEPTION:");
@@ -406,6 +549,17 @@ public class Client
             price=rm.queryCarsPrice(txnId,location);
             System.out.println("Price of a car at this location:"+price);
             }
+            catch (DeadlockException e) {
+              System.out.println("DEADLOCK EXCEPTION:");
+              System.out.println("A deadlock prevented command execution");
+              System.out.println("Your transaction has been aborted");
+              try {
+                rm.abort(txnId);
+              } catch (Exception e1) {
+                e.printStackTrace();
+              }
+              txnId = -1;
+            }
             catch(Exception e){
             System.out.println("EXCEPTION:");
             System.out.println(e.getMessage());
@@ -425,6 +579,17 @@ public class Client
             location = obj.getString(arguments.elementAt(2));
             price=rm.queryRoomsPrice(txnId,location);
             System.out.println("Price of Rooms at this location:"+price);
+            }
+            catch (DeadlockException e) {
+              System.out.println("DEADLOCK EXCEPTION:");
+              System.out.println("A deadlock prevented command execution");
+              System.out.println("Your transaction has been aborted");
+              try {
+                rm.abort(txnId);
+              } catch (Exception e1) {
+                e.printStackTrace();
+              }
+              txnId = -1;
             }
             catch(Exception e){
             System.out.println("EXCEPTION:");
@@ -449,6 +614,17 @@ public class Client
                 System.out.println("Flight Reserved");
             else
                 System.out.println("Flight could not be reserved.");
+            }
+            catch (DeadlockException e) {
+              System.out.println("DEADLOCK EXCEPTION:");
+              System.out.println("A deadlock prevented command execution");
+              System.out.println("Your transaction has been aborted");
+              try {
+                rm.abort(txnId);
+              } catch (Exception e1) {
+                e.printStackTrace();
+              }
+              txnId = -1;
             }
             catch(Exception e){
             System.out.println("EXCEPTION:");
@@ -476,6 +652,17 @@ public class Client
             else
                 System.out.println("Car could not be reserved.");
             }
+            catch (DeadlockException e) {
+              System.out.println("DEADLOCK EXCEPTION:");
+              System.out.println("A deadlock prevented command execution");
+              System.out.println("Your transaction has been aborted");
+              try {
+                rm.abort(txnId);
+              } catch (Exception e1) {
+                e.printStackTrace();
+              }
+              txnId = -1;
+            }
             catch(Exception e){
             System.out.println("EXCEPTION:");
             System.out.println(e.getMessage());
@@ -500,6 +687,17 @@ public class Client
                 System.out.println("Room Reserved");
             else
                 System.out.println("Room could not be reserved.");
+            }
+            catch (DeadlockException e) {
+              System.out.println("DEADLOCK EXCEPTION:");
+              System.out.println("A deadlock prevented command execution");
+              System.out.println("Your transaction has been aborted");
+              try {
+                rm.abort(txnId);
+              } catch (Exception e1) {
+                e.printStackTrace();
+              }
+              txnId = -1;
             }
             catch(Exception e){
             System.out.println("EXCEPTION:");
@@ -535,6 +733,17 @@ public class Client
             else
                 System.out.println("Itinerary could not be reserved.");
             }
+            catch (DeadlockException e) {
+              System.out.println("DEADLOCK EXCEPTION:");
+              System.out.println("A deadlock prevented command execution");
+              System.out.println("Your transaction has been aborted");
+              try {
+                rm.abort(txnId);
+              } catch (Exception e1) {
+                e.printStackTrace();
+              }
+              txnId = -1;
+            }
             catch(Exception e){
             System.out.println("EXCEPTION:");
             System.out.println(e.getMessage());
@@ -562,6 +771,17 @@ public class Client
             Cid = obj.getInt(arguments.elementAt(2));
             rm.newCustomer(txnId,Cid);
             System.out.println("new customer id:"+Cid);
+            }
+            catch (DeadlockException e) {
+              System.out.println("DEADLOCK EXCEPTION:");
+              System.out.println("A deadlock prevented command execution");
+              System.out.println("Your transaction has been aborted");
+              try {
+                rm.abort(txnId);
+              } catch (Exception e1) {
+                e.printStackTrace();
+              }
+              txnId = -1;
             }
             catch(Exception e){
             System.out.println("EXCEPTION:");
