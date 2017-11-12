@@ -56,6 +56,10 @@ public class MiddleWare implements ResourceManager
         TimeToLive.put(txnID, timeToAdd);
     }
     
+    public void removeTime(int txnID){
+    	TimeToLive.remove(txnID);
+    }
+    
     public void killTransactions() throws InvalidTransactionException, RemoteException{
     	Iterator it = TimeToLive.entrySet().iterator();
     	while(it.hasNext()){
@@ -73,6 +77,7 @@ public class MiddleWare implements ResourceManager
     
     // Middleware doesn't start transaction by ID
     public int start(int txnID) throws RemoteException {
+    	addTime(txnID);
     	throw new RemoteException("Not implmented");
     }
     
@@ -109,6 +114,7 @@ public class MiddleWare implements ResourceManager
     	hotelRM.commit(txnID);
     	
     	lm.UnlockAll(txnID);
+    	removeTime(txnID);
     	return true;
     }
     
@@ -128,6 +134,7 @@ public class MiddleWare implements ResourceManager
     	hotelRM.abort(txnID);
 
     	lm.UnlockAll(txnID);
+    	removeTime(txnID);
     }
 
     public static void main(String args[]) {
@@ -243,19 +250,22 @@ public class MiddleWare implements ResourceManager
     public boolean reserveFlight(int id, int customerID, int flightNum)
         throws RemoteException, DeadlockException
     {
+    	addTime(id);
         return flightRM.reserveFlight(id, customerID, flightNum);
     }
     
     // Create a new flight, or add seats to existing flight
     //  NOTE: if flightPrice <= 0 and the flight already exists, it maintains its current price
     public boolean addFlight(int id, int flightNum, int flightSeats, int flightPrice) throws RemoteException, DeadlockException {
+    	addTime(id);
     	return flightRM.addFlight(id, flightNum, flightSeats, flightPrice);
 
     }
     
     public boolean deleteFlight(int id, int flightNum) throws RemoteException, DeadlockException
     {
-        return flightRM.deleteFlight(id, flightNum);
+    	addTime(id);
+    	return flightRM.deleteFlight(id, flightNum);
     }
      
 
@@ -390,6 +400,7 @@ public class MiddleWare implements ResourceManager
     public boolean addRooms(int id, String location, int count, int price)
         throws RemoteException, DeadlockException
     {
+    	addTime(id);
      return hotelRM.addRooms(id, location, count, price);
     }
 
@@ -397,6 +408,7 @@ public class MiddleWare implements ResourceManager
     public boolean deleteRooms(int id, String location)
         throws RemoteException, DeadlockException
     {
+    	addTime(id);
         return hotelRM.deleteRooms(id, location);
     }
 
@@ -405,6 +417,7 @@ public class MiddleWare implements ResourceManager
     public boolean addCars(int id, String location, int count, int price)
         throws RemoteException, DeadlockException
     {
+    	addTime(id);
     	return carRM.addCars(id, location, count, price);
     }
 
@@ -413,6 +426,7 @@ public class MiddleWare implements ResourceManager
     public boolean deleteCars(int id, String location)
         throws RemoteException, DeadlockException
     {
+    	addTime(id);
         return carRM.deleteCars(id, location);
     }
 
@@ -422,6 +436,7 @@ public class MiddleWare implements ResourceManager
     public int queryFlight(int id, int flightNum)
         throws RemoteException, DeadlockException
     {
+    	addTime(id);
         return flightRM.queryFlight(id, flightNum);
     }
 
@@ -443,6 +458,7 @@ public class MiddleWare implements ResourceManager
     public int queryFlightPrice(int id, int flightNum )
         throws RemoteException, DeadlockException
     {
+    	addTime(id);
         return flightRM.queryFlightPrice(id, flightNum);
     }
 
@@ -451,6 +467,7 @@ public class MiddleWare implements ResourceManager
     public int queryRooms(int id, String location)
         throws RemoteException, DeadlockException
     {
+    	addTime(id);
         return hotelRM.queryRooms(id, location);
     }
 
@@ -461,6 +478,7 @@ public class MiddleWare implements ResourceManager
     public int queryRoomsPrice(int id, String location)
         throws RemoteException, DeadlockException
     {
+    	addTime(id);
         return hotelRM.queryRoomsPrice(id, location);
     }
 
@@ -469,6 +487,7 @@ public class MiddleWare implements ResourceManager
     public int queryCars(int id, String location)
         throws RemoteException, DeadlockException
     {
+    	addTime(id);
         return carRM.queryCars(id, location);
     }
 
@@ -477,6 +496,7 @@ public class MiddleWare implements ResourceManager
     public int queryCarsPrice(int id, String location)
         throws RemoteException, DeadlockException
     {
+    	addTime(id);
         return carRM.queryCarsPrice(id, location);
     }
 
@@ -486,6 +506,7 @@ public class MiddleWare implements ResourceManager
     public RMHashtable getCustomerReservations(int id, int customerID)
         throws RemoteException, DeadlockException
     {
+    	addTime(id);
         Trace.info("RM::getCustomerReservations(" + id + ", " + customerID + ") called" );
         Customer cust = (Customer) readData( id, Customer.getKey(customerID) );
         if ( cust == null ) {
@@ -500,6 +521,7 @@ public class MiddleWare implements ResourceManager
     public String queryCustomerInfo(int id, int customerID)
         throws RemoteException, DeadlockException{
 //    {
+    	addTime(id);
 //        Trace.info("RM::queryCustomerInfo(" + id + ", " + customerID + ") called" );
 //        Customer cust = (Customer) readData( id, Customer.getKey(customerID) );
 //        if ( cust == null ) {
@@ -534,6 +556,7 @@ public class MiddleWare implements ResourceManager
     public synchronized int newCustomer(int id)
         throws RemoteException, DeadlockException
     {
+    	addTime(id);
         Trace.info("INFO: RM::newCustomer(" + id + ") called" );
         // Generate a globally unique ID for the new customer
         int cid = Integer.parseInt( String.valueOf(id) +
@@ -552,6 +575,7 @@ public class MiddleWare implements ResourceManager
     public synchronized boolean newCustomer(int id, int customerID )
         throws RemoteException, DeadlockException
     {
+    	addTime(id);
         Trace.info("INFO: RM::newCustomer(" + id + ", " + customerID + ") called" );
         Customer cust = (Customer) readData( id, Customer.getKey(customerID) );
         if ( cust == null ) {
@@ -573,6 +597,7 @@ public class MiddleWare implements ResourceManager
     public synchronized boolean deleteCustomer(int id, int customerID)
         throws RemoteException, DeadlockException
     {
+    	addTime(id);
         Trace.info("RM::deleteCustomer(" + id + ", " + customerID + ") called" );
         Customer cust = (Customer) readData( id, Customer.getKey(customerID) );
         if ( cust == null ) {
@@ -627,6 +652,7 @@ public class MiddleWare implements ResourceManager
     public boolean reserveCar(int id, int customerID, String location)
         throws RemoteException, DeadlockException
     {
+    	addTime(id);
         return carRM.reserveCar(id, customerID, location);
     }
 
@@ -635,6 +661,7 @@ public class MiddleWare implements ResourceManager
     public boolean reserveRoom(int id, int customerID, String location)
         throws RemoteException, DeadlockException
     {
+    	addTime(id);
         return hotelRM.reserveRoom(id, customerID, location);
     }
 
@@ -643,6 +670,7 @@ public class MiddleWare implements ResourceManager
     public boolean itinerary(int id,int customer,Vector flightNumbers,String location,boolean Car,boolean Room)
         throws RemoteException, DeadlockException
     {
+    	addTime(id);
     	boolean flag = true;
     	boolean carFlag = true;
     	boolean hotelFlag = true;
