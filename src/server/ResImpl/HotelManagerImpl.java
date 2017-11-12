@@ -10,6 +10,8 @@ import java.util.*;
 
 import LockManager.DeadlockException;
 import LockManager.LockManager;
+import Test.CSVTestWriter;
+import Test.TestData;
 
 import java.rmi.registry.Registry;
 import java.rmi.registry.LocateRegistry;
@@ -26,6 +28,7 @@ public class HotelManagerImpl implements ResourceManager
     protected HashMap<Integer, RMHashtable> TxnWrites = new HashMap<Integer, RMHashtable>();
     protected HashMap<Integer, RMHashtable> TxnDeletes = new HashMap<Integer, RMHashtable>();
     protected LockManager lm = new LockManager();
+    private ArrayList<TestData> HotelTestData = new ArrayList<TestData>();
     
 
     public static void main(String args[]) {
@@ -71,15 +74,20 @@ public class HotelManagerImpl implements ResourceManager
     
     public int start(int txnID) {
     	// Create a copy of the official HT for this txn
+    	Date startTime = new Date();
     	TxnCopies.put(txnID, m_itemHT.deepCopy());
     	// Create an empty write set for this txn
     	TxnWrites.put(txnID, new RMHashtable());
     	TxnDeletes.put(txnID, new RMHashtable());
+    	Date endTime = new Date();
+     	TestData itemToAdd = new TestData(txnID, startTime, endTime, "start", "HotelRM");
+    	HotelTestData.add(itemToAdd);
     	return txnID;
     }
     
     public boolean commit(int txnID) throws InvalidTransactionException {
     	// Check if the txn exists
+    	Date startTime = new Date();
     	if (!TxnCopies.containsKey(txnID)) {
     		throw new InvalidTransactionException(txnID);
     	}
@@ -106,6 +114,11 @@ public class HotelManagerImpl implements ResourceManager
     	TxnDeletes.remove(txnID);
     	
     	lm.UnlockAll(txnID);
+    	Date endTime = new Date();
+    	
+    	TestData itemToAdd = new TestData(txnID, startTime, endTime, "commit", "HotelRM");
+    	HotelTestData.add(itemToAdd);
+    	
     	return true;
     }
     
@@ -289,6 +302,7 @@ public class HotelManagerImpl implements ResourceManager
     public boolean addRooms(int id, String location, int count, int price)
         throws RemoteException, DeadlockException
     {
+    	Date startTime = new Date();
         Trace.info("RM::addRooms(" + id + ", " + location + ", " + count + ", $" + price + ") called" );
         Hotel curObj = (Hotel) readData( id, Hotel.getKey(location) );
         if ( curObj == null ) {
@@ -305,6 +319,9 @@ public class HotelManagerImpl implements ResourceManager
             writeData( id, curObj.getKey(), curObj );
             Trace.info("RM::addRooms(" + id + ") modified existing location " + location + ", count=" + curObj.getCount() + ", price=$" + price );
         } // else
+        Date endTime = new Date();
+        TestData itemToAdd = new TestData(id, startTime, endTime, Hotel.getKey(location), "addRooms", "HotelRM");
+        HotelTestData.add(itemToAdd);
         return(true);
     }
 
@@ -543,7 +560,12 @@ public class HotelManagerImpl implements ResourceManager
     public boolean reserveRoom(int id, int customerID, String location)
         throws RemoteException, DeadlockException
     {
-        return reserveItem(id, customerID, Hotel.getKey(location), location);
+    	Date startTime = new Date();
+        boolean valToReturn = reserveItem(id, customerID, Hotel.getKey(location), location);
+        Date endTime = new Date();
+        TestData itemToAdd = new TestData(id, startTime, endTime, Hotel.getKey(location), "reserveRoom", "HotelRM");
+        HotelTestData.add(itemToAdd);
+        return valToReturn;
     }
     // Adds flight reservation to this customer.  
     public boolean reserveFlight(int id, int customerID, int flightNum)
@@ -563,5 +585,11 @@ public class HotelManagerImpl implements ResourceManager
 	public int start() throws RemoteException {
 		throw new RemoteException("Not Implemented");
 	}
+	
+    public void writeTestDataToFile(){
+    	CSVTestWriter writeMW = new CSVTestWriter("HotelRM");
+    	writeMW.addData(HotelTestData);
+    	writeMW.closeFile();
+    }
 }
 

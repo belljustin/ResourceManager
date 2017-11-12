@@ -146,4 +146,6 @@ public interface ResourceManager extends Remote
     public boolean commit(int txnId) throws RemoteException, InvalidTransactionException;
     
     public void abort(int txnID) throws RemoteException, InvalidTransactionException;
+    
+    public void writeTestDataToFile();
 }

@@ -11,6 +11,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import LockManager.DeadlockException;
 import LockManager.LockManager;
+import Test.CSVTestWriter;
+import Test.TestData;
 
 import java.rmi.registry.Registry;
 import java.rmi.registry.LocateRegistry;
@@ -29,6 +31,7 @@ public class CarManagerImpl implements ResourceManager
     protected ConcurrentHashMap<Integer, Date> TimeToLive = new ConcurrentHashMap<Integer, Date>();
     protected LockManager lm = new LockManager();
     private static final int TIME_TO_LIVE_IN_MINUTES = 3;  
+    public ArrayList<TestData> CarTestData = new ArrayList<TestData>();
     
 
     public static void main(String args[]) {
@@ -127,6 +130,7 @@ public class CarManagerImpl implements ResourceManager
     
     public boolean commit(int txnID) throws InvalidTransactionException {
     	// Check if the txn exists
+    	Date currentStartTime = new Date();
     	if (!TxnCopies.containsKey(txnID)) {
     		throw new InvalidTransactionException(txnID);
     	}
@@ -153,6 +157,9 @@ public class CarManagerImpl implements ResourceManager
     	TxnDeletes.remove(txnID);
     	
     	lm.UnlockAll(txnID);
+    	Date currentEndTime = new Date();
+    	TestData itemToAdd = new TestData(txnID, currentStartTime, currentEndTime, "commit", "CarRM");
+    	CarTestData.add(itemToAdd);
     	return true;
     }
     
@@ -368,6 +375,7 @@ public class CarManagerImpl implements ResourceManager
     public boolean addCars(int id, String location, int count, int price)
         throws RemoteException, DeadlockException
     {
+    	Date currentStartTime = new Date();
         Trace.info("RM::addCars(" + id + ", " + location + ", " + count + ", $" + price + ") called" );
         Car curObj = (Car) readData( id, Car.getKey(location) );
         if ( curObj == null ) {
@@ -384,6 +392,9 @@ public class CarManagerImpl implements ResourceManager
             writeData( id, curObj.getKey(), curObj );
             Trace.info("RM::addCars(" + id + ") modified existing location " + location + ", count=" + curObj.getCount() + ", price=$" + price );
         } // else
+        Date currentEndTime = new Date();
+        TestData itemToAdd = new TestData(id, currentStartTime, currentEndTime, Car.getKey(location), "addCars", "CarRM");
+        CarTestData.add(itemToAdd);
         return(true);
     }
 
@@ -448,7 +459,13 @@ public class CarManagerImpl implements ResourceManager
     public int queryCars(int id, String location)
         throws RemoteException, DeadlockException
     {
-        return queryNum(id, Car.getKey(location));
+    	Date currentStartTime = new Date();
+    	
+        int valToReturn = queryNum(id, Car.getKey(location));
+        Date currentEndTime = new Date();
+        TestData itemToAdd = new TestData(id, currentStartTime, currentEndTime, Car.getKey(location), "queryCars", "CarRM");
+        CarTestData.add(itemToAdd);
+        return valToReturn;
     }
 
 
@@ -610,4 +627,10 @@ public class CarManagerImpl implements ResourceManager
 	public int start() throws RemoteException {
 		throw new RemoteException("Not Implemented");
 	}
+	
+    public void writeTestDataToFile(){
+    	CSVTestWriter writeMW = new CSVTestWriter("CarRM");
+    	writeMW.addData(CarTestData);
+    	writeMW.closeFile();
+    }
 }

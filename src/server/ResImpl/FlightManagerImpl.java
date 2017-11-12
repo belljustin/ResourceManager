@@ -10,6 +10,8 @@ import java.util.*;
 
 import LockManager.DeadlockException;
 import LockManager.LockManager;
+import Test.CSVTestWriter;
+import Test.TestData;
 
 import java.rmi.registry.Registry;
 import java.rmi.registry.LocateRegistry;
@@ -26,6 +28,7 @@ public class FlightManagerImpl implements ResourceManager
     protected HashMap<Integer, RMHashtable> TxnWrites = new HashMap<Integer, RMHashtable>();
     protected HashMap<Integer, RMHashtable> TxnDeletes = new HashMap<Integer, RMHashtable>();
     protected LockManager lm = new LockManager();
+    private ArrayList<TestData> FlightTestData = new ArrayList<TestData>();
     
 
     public static void main(String args[]) {
@@ -80,6 +83,7 @@ public class FlightManagerImpl implements ResourceManager
     
     public boolean commit(int txnID) throws InvalidTransactionException {
     	// Check if the txn exists
+    	Date currentStartTime = new Date();
     	if (!TxnCopies.containsKey(txnID)) {
     		throw new InvalidTransactionException(txnID);
     	}
@@ -106,6 +110,9 @@ public class FlightManagerImpl implements ResourceManager
     	TxnDeletes.remove(txnID);
     	
     	lm.UnlockAll(txnID);
+    	Date currentEndTime = new Date();
+    	TestData itemToAdd = new TestData(txnID, currentStartTime, currentEndTime, "commit", "FlightRM");
+    	FlightTestData.add(itemToAdd);
     	return true;
     }
     
@@ -254,6 +261,7 @@ public class FlightManagerImpl implements ResourceManager
     public boolean addFlight(int id, int flightNum, int flightSeats, int flightPrice)
         throws RemoteException, DeadlockException
     {
+    	Date currentStartTime = new Date();
         Trace.info("RM::addFlight(" + id + ", " + flightNum + ", $" + flightPrice + ", " + flightSeats + ") called" );
         Flight curObj = (Flight) readData( id, Flight.getKey(flightNum) );
         if ( curObj == null ) {
@@ -271,6 +279,9 @@ public class FlightManagerImpl implements ResourceManager
             writeData( id, curObj.getKey(), curObj );
             Trace.info("RM::addFlight(" + id + ") modified existing flight " + flightNum + ", seats=" + curObj.getCount() + ", price=$" + flightPrice );
         } // else
+        Date currentEndTime = new Date();
+        TestData itemToAdd = new TestData(id, currentStartTime, currentEndTime, Flight.getKey(flightNum), "addFlight", "FlightRM");
+        FlightTestData.add(itemToAdd);
         return(true);
     }
 
@@ -549,8 +560,16 @@ public class FlightManagerImpl implements ResourceManager
     public boolean reserveFlight(int id, int customerID, int flightNum)
         throws RemoteException, DeadlockException
     {
-        return reserveItem(id, customerID, Flight.getKey(flightNum), String.valueOf(flightNum));
+    	Date currentStartTime = new Date();
+    	
+    	
+        boolean valToReturn = reserveItem(id, customerID, Flight.getKey(flightNum), String.valueOf(flightNum));
+        Date currentEndTime = new Date();
+        TestData itemToAdd = new TestData(id, currentStartTime, currentEndTime, Flight.getKey(flightNum), "reserveFlight", "FlightRM");
+        FlightTestData.add(itemToAdd);
+        return valToReturn;
     }
+    
     
     // Reserve an itinerary 
     public boolean itinerary(int id,int customer,Vector flightNumbers,String location,boolean Car,boolean Room)
@@ -563,5 +582,11 @@ public class FlightManagerImpl implements ResourceManager
 	public int start() throws RemoteException {
 		throw new RemoteException("Not Implemented");
 	}
+	
+    public void writeTestDataToFile(){
+    	CSVTestWriter writeMW = new CSVTestWriter("FlightRM");
+    	writeMW.addData(FlightTestData);
+    	writeMW.closeFile();
+    }
 
 }

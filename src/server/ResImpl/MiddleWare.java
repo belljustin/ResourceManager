@@ -7,6 +7,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import LockManager.DeadlockException;
 import LockManager.LockManager;
+import Test.CSVTestWriter;
 import Test.TestData;
 
 import java.rmi.registry.Registry;
@@ -96,6 +97,7 @@ public class MiddleWare implements ResourceManager
     
     public boolean commit(int txnID) throws InvalidTransactionException, RemoteException {
     	// Check if the txn exists
+    	Date currentStartTime = new Date();
     	if (!TxnCopies.containsKey(txnID)) {
     		throw new InvalidTransactionException(txnID);
     	}
@@ -128,6 +130,9 @@ public class MiddleWare implements ResourceManager
     	
     	lm.UnlockAll(txnID);
     	removeTime(txnID);
+    	Date currentEndTime = new Date();
+    	TestData itemToAdd = new TestData(txnID, currentStartTime, currentEndTime, "commit", "Middleware");
+    	MWTestData.add(itemToAdd);
     	return true;
     }
     
@@ -271,8 +276,12 @@ public class MiddleWare implements ResourceManager
     //  NOTE: if flightPrice <= 0 and the flight already exists, it maintains its current price
     public boolean addFlight(int id, int flightNum, int flightSeats, int flightPrice) throws RemoteException, DeadlockException {
     	addTime(id);
-    	return flightRM.addFlight(id, flightNum, flightSeats, flightPrice);
-
+    	Date currentStartTime = new Date();
+    	boolean valToReturn = flightRM.addFlight(id, flightNum, flightSeats, flightPrice);
+    	Date currentEndTime = new Date();
+    	TestData itemToAdd = new TestData(id, currentStartTime, currentEndTime, "addFlight", "Middleware");
+    	MWTestData.add(itemToAdd);
+    	return valToReturn;
     }
     
     public boolean deleteFlight(int id, int flightNum) throws RemoteException, DeadlockException
@@ -420,8 +429,14 @@ public class MiddleWare implements ResourceManager
     public boolean addRooms(int id, String location, int count, int price)
         throws RemoteException, DeadlockException
     {
+    	
+    	Date currentStartTime = new Date();
     	addTime(id);
-     return hotelRM.addRooms(id, location, count, price);
+    	boolean valToReturn = hotelRM.addRooms(id, location, count, price);
+    	Date currentEndTime = new Date();
+    	TestData itemToAdd = new TestData(id, currentStartTime, currentEndTime, "addRooms", "Middleware");
+    	MWTestData.add(itemToAdd);
+    	return valToReturn;
     }
 
     // Delete rooms from a location
@@ -441,7 +456,7 @@ public class MiddleWare implements ResourceManager
     	addTime(id);
     	boolean valToReturn = carRM.addCars(id, location, count, price);
     	Date currentEndTime = new Date();
-    	TestData itemToAdd = new TestData(id, currentStarttime, currentEndTime, "addCars", "MiddleWare");
+    	TestData itemToAdd = new TestData(id, currentStarttime, currentEndTime, "addCars", "Middleware");
     	MWTestData.add(itemToAdd);
     	return valToReturn;
     }
@@ -512,8 +527,14 @@ public class MiddleWare implements ResourceManager
     public int queryCars(int id, String location)
         throws RemoteException, DeadlockException
     {
+    	Date currentStartTime = new Date();
     	addTime(id);
-        return carRM.queryCars(id, location);
+    	int valToReturn = carRM.queryCars(id, location)
+        Date currentEndTime = new Date();
+    	TestData itemToAdd = new TestData(id, currentStartTime, currentEndTime, "queryCars", "Middleware");
+    	MWTestData.add(itemToAdd);
+    			
+    	return valToReturn;
     }
 
 
@@ -581,6 +602,7 @@ public class MiddleWare implements ResourceManager
     public synchronized int newCustomer(int id)
         throws RemoteException, DeadlockException
     {
+    	Date currentStartTime = new Date();
     	addTime(id);
         Trace.info("INFO: RM::newCustomer(" + id + ") called" );
         // Generate a globally unique ID for the new customer
@@ -593,6 +615,9 @@ public class MiddleWare implements ResourceManager
         hotelRM.newCustomer(id, cid);
         carRM.newCustomer(id, cid);
         flightRM.newCustomer(id, cid);
+        Date currentEndTime = new Date();
+        TestData itemToAdd = new TestData(id, currentStartTime, currentEndTime, "newCustomer", "Middleware");
+        MWTestData.add(itemToAdd);
         return cid;
     }
 
@@ -695,6 +720,7 @@ public class MiddleWare implements ResourceManager
     public boolean itinerary(int id,int customer,Vector flightNumbers,String location,boolean Car,boolean Room)
         throws RemoteException, DeadlockException
     {
+    	Date currentStartTime = new Date();
     	addTime(id);
     	boolean flag = true;
     	boolean carFlag = true;
@@ -716,8 +742,19 @@ public class MiddleWare implements ResourceManager
     	}
     	
     	
-    	
+    	Date currentEndTime = new Date();
+    	TestData itemToAdd = new TestData(id, currentStartTime, currentEndTime, "itinerary", "Middleware");
+    	MWTestData.add(itemToAdd);
      return (flag && carFlag && hotelFlag);
+    }
+    
+    public void writeTestDataToFile(){
+    	CSVTestWriter writeMW = new CSVTestWriter("Middleware");
+    	writeMW.addData(MWTestData);
+    	writeMW.closeFile();
+    	carRM.writeTestDataToFile();
+    	hotelRM.writeTestDataToFile();
+    	flightRM.writeTestDataToFile();
     }
     
 //	public Boolean checkNumeric(String msg) {

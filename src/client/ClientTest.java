@@ -94,6 +94,7 @@ public class ClientTest
         rm.addCars(txnId, "van", 20, 200);
         rm.queryCars(txnId, "lax");
         rm.commit(txnId);
+        rm.writeTestDataToFile();
     }
     
     public static void FullTest(ResourceManager rm)
@@ -116,5 +117,6 @@ public class ClientTest
     	rm.newCustomer(txnId, 1);
     	rm.itinerary(txnId, 1, flights, "lax", true, true);
     	rm.commit(txnId);
+    	rm.writeTestDataToFile();
     }
 }
