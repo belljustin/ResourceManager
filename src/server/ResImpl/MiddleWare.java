@@ -29,11 +29,12 @@ public class MiddleWare implements ResourceManager
     protected HashMap<Integer, RMHashtable> TxnWrites = new HashMap<Integer, RMHashtable>();
     protected HashMap<Integer, RMHashtable> TxnDeletes = new HashMap<Integer, RMHashtable>();
     protected LockManager lm = new LockManager();
-    private static final int TIME_TO_LIVE_IN_MINUTES = 3;  
+    private static final int TIME_TO_LIVE_IN_SECONDS = 10;  
     protected ConcurrentHashMap<Integer, Date> TimeToLive = new ConcurrentHashMap<Integer, Date>();
     
     public int start() throws RemoteException {
     	int txnID = txnCounter++;
+    	addTime(txnID);
 
     	// Create a copy of the official HT for this txn
     	TxnCopies.put(txnID, m_itemHT.deepCopy());
@@ -51,7 +52,7 @@ public class MiddleWare implements ResourceManager
     
     public void addTime(int txnID){
         Calendar now = Calendar.getInstance();
-        now.add(Calendar.MINUTE, TIME_TO_LIVE_IN_MINUTES);
+        now.add(Calendar.SECOND, TIME_TO_LIVE_IN_SECONDS);
         Date timeToAdd = now.getTime();
         TimeToLive.put(txnID, timeToAdd);
     }
