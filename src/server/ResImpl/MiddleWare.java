@@ -29,7 +29,7 @@ public class MiddleWare implements ResourceManager
     protected HashMap<Integer, RMHashtable> TxnWrites = new HashMap<Integer, RMHashtable>();
     protected HashMap<Integer, RMHashtable> TxnDeletes = new HashMap<Integer, RMHashtable>();
     protected LockManager lm = new LockManager();
-    private static final int TIME_TO_LIVE_IN_SECONDS = 10;  
+    private static final int TIME_TO_LIVE_IN_SECONDS = 360;
     protected ConcurrentHashMap<Integer, Date> TimeToLive = new ConcurrentHashMap<Integer, Date>();
     
     public int start() throws RemoteException {
@@ -71,12 +71,14 @@ public class MiddleWare implements ResourceManager
     
     public void killTransactions() throws InvalidTransactionException, RemoteException{
     	Iterator it = TimeToLive.entrySet().iterator();
+    	System.out.println(TimeToLive.entrySet());
     	while(it.hasNext()){
     		Date currentTime = new Date();
     		ConcurrentHashMap.Entry pair = (ConcurrentHashMap.Entry) it.next();
     		int compare = currentTime.compareTo((Date) pair.getValue());
     		if(compare > 0){
     			int txnIDtoKill = (int) pair.getKey();
+    			System.out.println("Transaction " + txnIDtoKill + " timed out");
     			abort(txnIDtoKill);
     			it.remove();
     		}
@@ -283,6 +285,13 @@ public class MiddleWare implements ResourceManager
     {
     	lm.Lock(id, key, LockManager.READ);
     	RMHashtable copy = TxnCopies.get(id);
+    	synchronized (m_itemHT) {
+    		try {
+    			copy.put(key, m_itemHT.get(key));
+    		} catch(NullPointerException e) {
+    			// key doesn't exist yet
+    		}
+    	}
 		synchronized(copy) {
 			return (RMItem) copy.get(key);
 		}

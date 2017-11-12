@@ -128,6 +128,13 @@ public class FlightManagerImpl implements ResourceManager
     {
     	lm.Lock(id, key, LockManager.READ);
     	RMHashtable copy = TxnCopies.get(id);
+    	synchronized (m_itemHT) {
+    		try {
+    			copy.put(key, m_itemHT.get(key));
+    		} catch(NullPointerException e) {
+    			// key doesn't exist yet
+    		}
+    	}
 		synchronized(copy) {
 			return (RMItem) copy.get(key);
 		}
