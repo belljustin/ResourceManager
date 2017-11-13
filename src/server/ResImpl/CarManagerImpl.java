@@ -130,7 +130,7 @@ public class CarManagerImpl implements ResourceManager
     
     public boolean commit(int txnID) throws InvalidTransactionException {
     	// Check if the txn exists
-    	Date currentStartTime = new Date();
+    	long start = System.nanoTime();
     	if (!TxnCopies.containsKey(txnID)) {
     		throw new InvalidTransactionException(txnID);
     	}
@@ -157,8 +157,8 @@ public class CarManagerImpl implements ResourceManager
     	TxnDeletes.remove(txnID);
     	
     	lm.UnlockAll(txnID);
-    	Date currentEndTime = new Date();
-    	TestData itemToAdd = new TestData(txnID, currentStartTime, currentEndTime, "commit", "CarRM");
+    	long end = System.nanoTime();
+    	TestData itemToAdd = new TestData(txnID, start, end, "commit", "CarRM");
     	CarTestData.add(itemToAdd);
     	return true;
     }
@@ -375,7 +375,7 @@ public class CarManagerImpl implements ResourceManager
     public boolean addCars(int id, String location, int count, int price)
         throws RemoteException, DeadlockException
     {
-    	Date currentStartTime = new Date();
+    	long start = System.nanoTime();
         Trace.info("RM::addCars(" + id + ", " + location + ", " + count + ", $" + price + ") called" );
         Car curObj = (Car) readData( id, Car.getKey(location) );
         if ( curObj == null ) {
@@ -392,8 +392,8 @@ public class CarManagerImpl implements ResourceManager
             writeData( id, curObj.getKey(), curObj );
             Trace.info("RM::addCars(" + id + ") modified existing location " + location + ", count=" + curObj.getCount() + ", price=$" + price );
         } // else
-        Date currentEndTime = new Date();
-        TestData itemToAdd = new TestData(id, currentStartTime, currentEndTime, Car.getKey(location), "addCars", "CarRM");
+        long end = System.nanoTime();
+        TestData itemToAdd = new TestData(id, start, end, Car.getKey(location), "addCars", "CarRM");
         CarTestData.add(itemToAdd);
         return(true);
     }
@@ -459,11 +459,11 @@ public class CarManagerImpl implements ResourceManager
     public int queryCars(int id, String location)
         throws RemoteException, DeadlockException
     {
-    	Date currentStartTime = new Date();
+    	long start = System.nanoTime();
     	
         int valToReturn = queryNum(id, Car.getKey(location));
-        Date currentEndTime = new Date();
-        TestData itemToAdd = new TestData(id, currentStartTime, currentEndTime, Car.getKey(location), "queryCars", "CarRM");
+        long end = System.nanoTime();
+        TestData itemToAdd = new TestData(id, start, end, Car.getKey(location), "queryCars", "CarRM");
         CarTestData.add(itemToAdd);
         return valToReturn;
     }

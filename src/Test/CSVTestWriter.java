@@ -5,6 +5,7 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class CSVTestWriter {
 	
@@ -12,14 +13,16 @@ public class CSVTestWriter {
 	Lock printWriterLock;
 	
 	public CSVTestWriter(String filename){
+	    printWriterLock = new ReentrantLock();
 		try {
 			pw = new PrintWriter(new File(filename+".csv"));
 			StringBuilder sb = new StringBuilder();
-			sb.append("TxnID");
-			sb.append("Time");
-			sb.append("Key");
-			sb.append("Method Name");
+			sb.append("TxnID,");
+			sb.append("Time,");
+			sb.append("Key,");
+			sb.append("Method Name,");
 			sb.append("Layer");
+			sb.append("\n");
 			pw.write(sb.toString());
 		} catch (FileNotFoundException e) {
 			// TODO Auto-generated catch block
@@ -28,8 +31,8 @@ public class CSVTestWriter {
 		
 	}
 	
-	public void addRow(int txnID, Date pStartTime, Date pEndTime, String pKey, String pMethodName, String pLayer){
-		long timeDifference = pEndTime.getTime() - pStartTime.getTime();
+	public void addRow(int txnID, long start, long end, String pKey, String pMethodName, String pLayer){
+		long timeDifference = end - start;
 		StringBuilder sb = new StringBuilder();
 		sb.append(txnID);
 		sb.append(timeDifference);
@@ -42,8 +45,8 @@ public class CSVTestWriter {
 				
 	}
 	
-	public void addRow(int txnID, Date pStartTime, Date pEndTime, String pMethodName, String pLayer){
-		long timeDifference = pEndTime.getTime() - pStartTime.getTime();
+	public void addRow(int txnID, long start, long end, String pMethodName, String pLayer){
+		long timeDifference = end - start;
 		StringBuilder sb = new StringBuilder();
 		sb.append(txnID);
 		sb.append(timeDifference);

@@ -10,8 +10,8 @@ public class TestData {
 	
 	
 
-	public TestData(int pTxnID, Date startTime, Date endTime, String pKey, String pMethodName, String pLayer){
-		long timeDiff = endTime.getTime() - startTime.getTime();
+	public TestData(int pTxnID, long start, long end, String pKey, String pMethodName, String pLayer){
+		long timeDiff = end - start;
 		txnID = pTxnID;
 		time = timeDiff; 
 		akey = pKey;
@@ -19,8 +19,8 @@ public class TestData {
 		layer = pLayer;
 	}
 	
-	public TestData(int pTxnID, Date startTime, Date endTime, String pMethodName, String pLayer){
-		long timeDiff = endTime.getTime() - startTime.getTime();
+	public TestData(int pTxnID, long start, long end, String pMethodName, String pLayer){
+		long timeDiff = end - start;
 		txnID = pTxnID;
 		time = timeDiff; 
 		akey = "No Key";

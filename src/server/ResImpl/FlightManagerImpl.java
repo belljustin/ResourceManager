@@ -83,7 +83,7 @@ public class FlightManagerImpl implements ResourceManager
     
     public boolean commit(int txnID) throws InvalidTransactionException {
     	// Check if the txn exists
-    	Date currentStartTime = new Date();
+    	long start = System.nanoTime();
     	if (!TxnCopies.containsKey(txnID)) {
     		throw new InvalidTransactionException(txnID);
     	}
@@ -110,8 +110,8 @@ public class FlightManagerImpl implements ResourceManager
     	TxnDeletes.remove(txnID);
     	
     	lm.UnlockAll(txnID);
-    	Date currentEndTime = new Date();
-    	TestData itemToAdd = new TestData(txnID, currentStartTime, currentEndTime, "commit", "FlightRM");
+    	long end = System.nanoTime();
+    	TestData itemToAdd = new TestData(txnID, start, end, "commit", "FlightRM");
     	FlightTestData.add(itemToAdd);
     	return true;
     }
@@ -261,7 +261,7 @@ public class FlightManagerImpl implements ResourceManager
     public boolean addFlight(int id, int flightNum, int flightSeats, int flightPrice)
         throws RemoteException, DeadlockException
     {
-    	Date currentStartTime = new Date();
+    	long start = System.nanoTime();
         Trace.info("RM::addFlight(" + id + ", " + flightNum + ", $" + flightPrice + ", " + flightSeats + ") called" );
         Flight curObj = (Flight) readData( id, Flight.getKey(flightNum) );
         if ( curObj == null ) {
@@ -279,8 +279,8 @@ public class FlightManagerImpl implements ResourceManager
             writeData( id, curObj.getKey(), curObj );
             Trace.info("RM::addFlight(" + id + ") modified existing flight " + flightNum + ", seats=" + curObj.getCount() + ", price=$" + flightPrice );
         } // else
-        Date currentEndTime = new Date();
-        TestData itemToAdd = new TestData(id, currentStartTime, currentEndTime, Flight.getKey(flightNum), "addFlight", "FlightRM");
+        long end = System.nanoTime();
+        TestData itemToAdd = new TestData(id, start, end, Flight.getKey(flightNum), "addFlight", "FlightRM");
         FlightTestData.add(itemToAdd);
         return(true);
     }
@@ -560,12 +560,12 @@ public class FlightManagerImpl implements ResourceManager
     public boolean reserveFlight(int id, int customerID, int flightNum)
         throws RemoteException, DeadlockException
     {
-    	Date currentStartTime = new Date();
+    	long start = System.nanoTime();
     	
     	
         boolean valToReturn = reserveItem(id, customerID, Flight.getKey(flightNum), String.valueOf(flightNum));
-        Date currentEndTime = new Date();
-        TestData itemToAdd = new TestData(id, currentStartTime, currentEndTime, Flight.getKey(flightNum), "reserveFlight", "FlightRM");
+        long end = System.nanoTime();
+        TestData itemToAdd = new TestData(id, start, end, Flight.getKey(flightNum), "reserveFlight", "FlightRM");
         FlightTestData.add(itemToAdd);
         return valToReturn;
     }

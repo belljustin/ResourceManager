@@ -97,7 +97,7 @@ public class MiddleWare implements ResourceManager
     
     public boolean commit(int txnID) throws InvalidTransactionException, RemoteException {
     	// Check if the txn exists
-    	Date currentStartTime = new Date();
+    	long start = System.nanoTime();
     	if (!TxnCopies.containsKey(txnID)) {
     		throw new InvalidTransactionException(txnID);
     	}
@@ -130,8 +130,8 @@ public class MiddleWare implements ResourceManager
     	
     	lm.UnlockAll(txnID);
     	removeTime(txnID);
-    	Date currentEndTime = new Date();
-    	TestData itemToAdd = new TestData(txnID, currentStartTime, currentEndTime, "commit", "Middleware");
+    	long end = System.nanoTime();
+    	TestData itemToAdd = new TestData(txnID, start, end, "commit", "Middleware");
     	MWTestData.add(itemToAdd);
     	return true;
     }
@@ -276,10 +276,10 @@ public class MiddleWare implements ResourceManager
     //  NOTE: if flightPrice <= 0 and the flight already exists, it maintains its current price
     public boolean addFlight(int id, int flightNum, int flightSeats, int flightPrice) throws RemoteException, DeadlockException {
     	addTime(id);
-    	Date currentStartTime = new Date();
+    	long start = System.nanoTime();
     	boolean valToReturn = flightRM.addFlight(id, flightNum, flightSeats, flightPrice);
-    	Date currentEndTime = new Date();
-    	TestData itemToAdd = new TestData(id, currentStartTime, currentEndTime, "addFlight", "Middleware");
+    	long end = System.nanoTime();
+    	TestData itemToAdd = new TestData(id, start, end, "addFlight", "Middleware");
     	MWTestData.add(itemToAdd);
     	return valToReturn;
     }
@@ -430,11 +430,11 @@ public class MiddleWare implements ResourceManager
         throws RemoteException, DeadlockException
     {
     	
-    	Date currentStartTime = new Date();
+    	long start = System.nanoTime();
     	addTime(id);
     	boolean valToReturn = hotelRM.addRooms(id, location, count, price);
-    	Date currentEndTime = new Date();
-    	TestData itemToAdd = new TestData(id, currentStartTime, currentEndTime, "addRooms", "Middleware");
+    	long end = System.nanoTime();
+    	TestData itemToAdd = new TestData(id, start, end, "addRooms", "Middleware");
     	MWTestData.add(itemToAdd);
     	return valToReturn;
     }
@@ -452,11 +452,11 @@ public class MiddleWare implements ResourceManager
     public boolean addCars(int id, String location, int count, int price)
         throws RemoteException, DeadlockException
     {
-    	Date currentStarttime = new Date();
+    	long start = System.nanoTime();
     	addTime(id);
     	boolean valToReturn = carRM.addCars(id, location, count, price);
-    	Date currentEndTime = new Date();
-    	TestData itemToAdd = new TestData(id, currentStarttime, currentEndTime, "addCars", "Middleware");
+    	long end = System.nanoTime();
+    	TestData itemToAdd = new TestData(id, start, end, "addCars", "Middleware");
     	MWTestData.add(itemToAdd);
     	return valToReturn;
     }
@@ -527,11 +527,11 @@ public class MiddleWare implements ResourceManager
     public int queryCars(int id, String location)
         throws RemoteException, DeadlockException
     {
-    	Date currentStartTime = new Date();
+    	long start = System.nanoTime();
     	addTime(id);
-    	int valToReturn = carRM.queryCars(id, location)
-        Date currentEndTime = new Date();
-    	TestData itemToAdd = new TestData(id, currentStartTime, currentEndTime, "queryCars", "Middleware");
+    	int valToReturn = carRM.queryCars(id, location);
+    long end = System.nanoTime();
+    	TestData itemToAdd = new TestData(id, start, end, "queryCars", "Middleware");
     	MWTestData.add(itemToAdd);
     			
     	return valToReturn;
@@ -602,7 +602,7 @@ public class MiddleWare implements ResourceManager
     public synchronized int newCustomer(int id)
         throws RemoteException, DeadlockException
     {
-    	Date currentStartTime = new Date();
+    	long start = System.nanoTime();
     	addTime(id);
         Trace.info("INFO: RM::newCustomer(" + id + ") called" );
         // Generate a globally unique ID for the new customer
@@ -615,8 +615,8 @@ public class MiddleWare implements ResourceManager
         hotelRM.newCustomer(id, cid);
         carRM.newCustomer(id, cid);
         flightRM.newCustomer(id, cid);
-        Date currentEndTime = new Date();
-        TestData itemToAdd = new TestData(id, currentStartTime, currentEndTime, "newCustomer", "Middleware");
+        long end = System.nanoTime();
+        TestData itemToAdd = new TestData(id, start, end, "newCustomer", "Middleware");
         MWTestData.add(itemToAdd);
         return cid;
     }
@@ -720,7 +720,7 @@ public class MiddleWare implements ResourceManager
     public boolean itinerary(int id,int customer,Vector flightNumbers,String location,boolean Car,boolean Room)
         throws RemoteException, DeadlockException
     {
-    	Date currentStartTime = new Date();
+    	long start = System.nanoTime();
     	addTime(id);
     	boolean flag = true;
     	boolean carFlag = true;
@@ -742,19 +742,23 @@ public class MiddleWare implements ResourceManager
     	}
     	
     	
-    	Date currentEndTime = new Date();
-    	TestData itemToAdd = new TestData(id, currentStartTime, currentEndTime, "itinerary", "Middleware");
+    	long end = System.nanoTime();
+    	TestData itemToAdd = new TestData(id, start, end, "itinerary", "Middleware");
     	MWTestData.add(itemToAdd);
      return (flag && carFlag && hotelFlag);
     }
     
     public void writeTestDataToFile(){
-    	CSVTestWriter writeMW = new CSVTestWriter("Middleware");
-    	writeMW.addData(MWTestData);
-    	writeMW.closeFile();
-    	carRM.writeTestDataToFile();
-    	hotelRM.writeTestDataToFile();
-    	flightRM.writeTestDataToFile();
+          CSVTestWriter writeMW = new CSVTestWriter("Middleware");
+          writeMW.addData(MWTestData);
+          writeMW.closeFile();
+          try {
+            carRM.writeTestDataToFile();
+            hotelRM.writeTestDataToFile();
+            flightRM.writeTestDataToFile();
+          } catch (RemoteException e) {
+            e.printStackTrace();
+          }
     }
     
 //	public Boolean checkNumeric(String msg) {

@@ -74,20 +74,20 @@ public class HotelManagerImpl implements ResourceManager
     
     public int start(int txnID) {
     	// Create a copy of the official HT for this txn
-    	Date startTime = new Date();
+    	long start = System.nanoTime();
     	TxnCopies.put(txnID, m_itemHT.deepCopy());
     	// Create an empty write set for this txn
     	TxnWrites.put(txnID, new RMHashtable());
     	TxnDeletes.put(txnID, new RMHashtable());
-    	Date endTime = new Date();
-     	TestData itemToAdd = new TestData(txnID, startTime, endTime, "start", "HotelRM");
+    	long end = System.nanoTime();
+     	TestData itemToAdd = new TestData(txnID, start, end, "start", "HotelRM");
     	HotelTestData.add(itemToAdd);
     	return txnID;
     }
     
     public boolean commit(int txnID) throws InvalidTransactionException {
     	// Check if the txn exists
-    	Date startTime = new Date();
+    	long start = System.nanoTime();
     	if (!TxnCopies.containsKey(txnID)) {
     		throw new InvalidTransactionException(txnID);
     	}
@@ -114,9 +114,9 @@ public class HotelManagerImpl implements ResourceManager
     	TxnDeletes.remove(txnID);
     	
     	lm.UnlockAll(txnID);
-    	Date endTime = new Date();
+    	long end = System.nanoTime();
     	
-    	TestData itemToAdd = new TestData(txnID, startTime, endTime, "commit", "HotelRM");
+    	TestData itemToAdd = new TestData(txnID, start, end, "commit", "HotelRM");
     	HotelTestData.add(itemToAdd);
     	
     	return true;
@@ -302,7 +302,7 @@ public class HotelManagerImpl implements ResourceManager
     public boolean addRooms(int id, String location, int count, int price)
         throws RemoteException, DeadlockException
     {
-    	Date startTime = new Date();
+    	long start = System.nanoTime();
         Trace.info("RM::addRooms(" + id + ", " + location + ", " + count + ", $" + price + ") called" );
         Hotel curObj = (Hotel) readData( id, Hotel.getKey(location) );
         if ( curObj == null ) {
@@ -319,8 +319,8 @@ public class HotelManagerImpl implements ResourceManager
             writeData( id, curObj.getKey(), curObj );
             Trace.info("RM::addRooms(" + id + ") modified existing location " + location + ", count=" + curObj.getCount() + ", price=$" + price );
         } // else
-        Date endTime = new Date();
-        TestData itemToAdd = new TestData(id, startTime, endTime, Hotel.getKey(location), "addRooms", "HotelRM");
+        long end = System.nanoTime();
+        TestData itemToAdd = new TestData(id, start, end, Hotel.getKey(location), "addRooms", "HotelRM");
         HotelTestData.add(itemToAdd);
         return(true);
     }
@@ -560,10 +560,10 @@ public class HotelManagerImpl implements ResourceManager
     public boolean reserveRoom(int id, int customerID, String location)
         throws RemoteException, DeadlockException
     {
-    	Date startTime = new Date();
+    	long start = System.nanoTime();
         boolean valToReturn = reserveItem(id, customerID, Hotel.getKey(location), location);
-        Date endTime = new Date();
-        TestData itemToAdd = new TestData(id, startTime, endTime, Hotel.getKey(location), "reserveRoom", "HotelRM");
+        long end = System.nanoTime();
+        TestData itemToAdd = new TestData(id, start, end, Hotel.getKey(location), "reserveRoom", "HotelRM");
         HotelTestData.add(itemToAdd);
         return valToReturn;
     }
