@@ -40,7 +40,7 @@ public class ClientThread implements Runnable {
     for (int i=0; i<ROUNDS; i++) {
       long waitTime = (long) rand.nextInt(period);
       try {
-        Thread.sleep(waitTime);
+        Thread.sleep(waitTime * 2);
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -66,6 +66,7 @@ public class ClientThread implements Runnable {
         mw.commit(txnId);
       } catch (DeadlockException e) {
         mw.abort(txnId);
+        System.out.println("Deadlock!");
         return false;
       }
       return true;

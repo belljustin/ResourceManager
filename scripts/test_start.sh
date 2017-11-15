@@ -1,3 +1,3 @@
 java -classpath "$CLASSPATH" \
      -Djava.security.policy="$PROJECTPATH/java.policy" \
-     client.ClientTest localhost 1099
+     client.ClientTest localhost 1099 $1 $2

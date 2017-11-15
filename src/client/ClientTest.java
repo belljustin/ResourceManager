@@ -15,8 +15,8 @@ import LockManager.DeadlockException;
 
 
 public class ClientTest {
-  static int NUM_CLIENTS = 2;
-  static float LOAD = 2; // transactions per second
+  static int NUM_CLIENTS = 5;
+  static float LOAD = 20; // transactions per second
   static int PERIOD = (int) (1 / LOAD * 1000); // transaction period in milliseconds
   static int TPERIOD = PERIOD * NUM_CLIENTS; // transaction period of each client
   
@@ -24,10 +24,16 @@ public class ClientTest {
   public static void main(String args[]) {
     ResourceManager middleware = getMiddleware(args);
 
+    LOAD = Float.valueOf(args[2]);
+    PERIOD = (int) (1 / LOAD * 1000); // transaction period in milliseconds
+    TPERIOD = PERIOD * NUM_CLIENTS; // transaction period of each client
+    NUM_CLIENTS = Integer.valueOf(args[3]);
+    
     try {
       setup(middleware);
     } catch (RemoteException | DeadlockException | InvalidTransactionException e) {
       e.printStackTrace();
+      System.exit(-1);
     }
     
     Vector<String> flights = new Vector<String>();
