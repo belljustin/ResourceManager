@@ -19,6 +19,7 @@ import java.rmi.RMISecurityManager;
 
 public class FlightManagerImpl implements ResourceManager 
 {
+	static FlightManagerImpl obj;
     
     protected RMHashtable m_itemHT = new RMHashtable();
     
@@ -44,7 +45,7 @@ public class FlightManagerImpl implements ResourceManager
 
         try {
             // create a new Server object
-            FlightManagerImpl obj = new FlightManagerImpl();
+            obj = new FlightManagerImpl();
             // dynamically generate the stub (client proxy)
             ResourceManager rm = (ResourceManager) UnicastRemoteObject.exportObject(obj, 0);
 
@@ -562,6 +563,15 @@ public class FlightManagerImpl implements ResourceManager
     // Middleware handles setting transaction ID
 	public int start() throws RemoteException {
 		throw new RemoteException("Not Implemented");
+	}
+	
+
+	public boolean shutdown() throws RemoteException {
+		return false;
+	}
+	
+	public void shutdownRM() throws RemoteException {
+		UnicastRemoteObject.unexportObject(obj, true);
 	}
 
 }

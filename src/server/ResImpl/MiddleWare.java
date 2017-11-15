@@ -4,6 +4,7 @@ import server.ResInterface.*;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import LockManager.DeadlockException;
 import LockManager.LockManager;
@@ -12,6 +13,7 @@ import java.rmi.registry.Registry;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
+import java.rmi.NotBoundException;
 import java.rmi.RMISecurityManager;
 
 public class MiddleWare implements ResourceManager 
@@ -23,7 +25,9 @@ public class MiddleWare implements ResourceManager
 	private Registry registry;
     
     protected RMHashtable m_itemHT = new RMHashtable();
-    protected volatile int txnCounter = 0;
+    protected volatile Integer txnCounter = 0;
+    
+    static MiddleWare middleWare;
     
     protected HashMap<Integer, RMHashtable> TxnCopies = new HashMap<Integer, RMHashtable>();
     protected HashMap<Integer, RMHashtable> TxnWrites = new HashMap<Integer, RMHashtable>();
@@ -33,7 +37,10 @@ public class MiddleWare implements ResourceManager
     protected ConcurrentHashMap<Integer, Date> TimeToLive = new ConcurrentHashMap<Integer, Date>();
     
     public int start() throws RemoteException {
-    	int txnID = txnCounter++;
+    	int txnID;
+    	synchronized (txnCounter) {
+    		txnID = txnCounter++;
+    	}
     	startTime(txnID);
 
     	// Create a copy of the official HT for this txn
@@ -97,6 +104,7 @@ public class MiddleWare implements ResourceManager
     	if (!TxnCopies.containsKey(txnID)) {
     		throw new InvalidTransactionException(txnID);
     	}
+    	System.out.println("removing txnid: " + txnID);
 
     	synchronized(m_itemHT) {
 			// Add all the writes from txn write set to offical HT
@@ -133,6 +141,7 @@ public class MiddleWare implements ResourceManager
     	if (!TxnCopies.containsKey(txnID)) {
     		throw new InvalidTransactionException(txnID);
     	}
+    	System.out.println("removing txnid: " + txnID);
 
     	// Remove write set and copy of stale txn
     	TxnCopies.remove(txnID);
@@ -162,7 +171,7 @@ public class MiddleWare implements ResourceManager
             System.exit(1);
         }
         
-            MiddleWare middleWare = new MiddleWare();
+            middleWare = new MiddleWare();
             middleWare.attachRegistry(port,middleWare);
             try {
             	middleWare.connectRM();
@@ -711,6 +720,19 @@ public class MiddleWare implements ResourceManager
     	
     	
      return (flag && carFlag && hotelFlag);
+    }
+    
+    public void shutdownRM() throws RemoteException {}
+    
+    public boolean shutdown() throws RemoteException {
+		while (!TimeToLive.isEmpty());
+		
+		hotelRM.shutdownRM();
+		carRM.shutdownRM();
+		flightRM.shutdownRM();
+
+		UnicastRemoteObject.unexportObject(middleWare, true);
+    	return true;
     }
     
 //	public Boolean checkNumeric(String msg) {
