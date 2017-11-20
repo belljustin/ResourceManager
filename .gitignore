@@ -7,3 +7,7 @@ java.policy
 *class
 *csv
 
+# Intellij
+.idea/
+*.iml
+*.iws
