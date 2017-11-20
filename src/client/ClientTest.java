@@ -15,12 +15,13 @@ import LockManager.DeadlockException;
 
 
 public class ClientTest {
+
   static int NUM_CLIENTS = 5;
   static float LOAD = 20; // transactions per second
   static int PERIOD = (int) (1 / LOAD * 1000); // transaction period in milliseconds
   static int TPERIOD = PERIOD * NUM_CLIENTS; // transaction period of each client
-  
-  
+
+
   public static void main(String args[]) {
     ResourceManager middleware = getMiddleware(args);
 
@@ -28,21 +29,21 @@ public class ClientTest {
     PERIOD = (int) (1 / LOAD * 1000); // transaction period in milliseconds
     TPERIOD = PERIOD * NUM_CLIENTS; // transaction period of each client
     NUM_CLIENTS = Integer.valueOf(args[3]);
-    
+
     try {
       setup(middleware);
     } catch (RemoteException | DeadlockException | InvalidTransactionException e) {
       e.printStackTrace();
       System.exit(-1);
     }
-    
+
     Vector<String> flights = new Vector<String>();
     flights.add("300");
     flights.add("200");
     String location = "lax";
-    
+
     ExecutorService es = Executors.newCachedThreadPool();
-    for (int i=0; i<NUM_CLIENTS; i++) {
+    for (int i = 0; i < NUM_CLIENTS; i++) {
       ClientThread ct = new ClientThread(middleware, TPERIOD, flights, location);
       es.execute(ct);
     }
@@ -64,10 +65,10 @@ public class ClientTest {
     mw.addRooms(txnId, "lax", 1000, 200);
     mw.commit(txnId);
   }
-  
+
   public static ResourceManager getMiddleware(String args[]) {
     ResourceManager mw = null;
-    
+
     String server = "localhost";
     if (args.length > 0) {
       server = args[0];
@@ -77,7 +78,7 @@ public class ClientTest {
     if (args.length > 1) {
       port = Integer.parseInt(args[1]);
     }
-    
+
     try {
       Registry registry = LocateRegistry.getRegistry(server, port);
       mw = (ResourceManager) registry.lookup("PG12MiddleWare");
@@ -85,11 +86,11 @@ public class ClientTest {
         System.out.println("Couldn't connect to middleware");
         System.exit(-1);
       }
-    } catch (Exception e) {    
+    } catch (Exception e) {
       System.err.println("Client exception: " + e.toString());
       e.printStackTrace();
     }
-    
+
     return mw;
   }
 }

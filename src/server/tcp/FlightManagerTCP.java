@@ -17,6 +17,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 public class FlightManagerTCP extends ResourceManagerTCP {
+
   private ServerSocket serverSocket = null;
 
   private ExecutorService executorService = Executors.newFixedThreadPool(10);
@@ -147,8 +148,7 @@ public class FlightManagerTCP extends ResourceManagerTCP {
 
   // Create a new flight, or add seats to existing flight
   // NOTE: if flightPrice <= 0 and the flight already exists, it maintains its current price
-  public boolean addFlight(int id, int flightNum, int flightSeats, int flightPrice)
-      {
+  public boolean addFlight(int id, int flightNum, int flightSeats, int flightPrice) {
     Trace.info("RM::addFlight(" + id + ", " + flightNum + ", $" + flightPrice + ", " + flightSeats
         + ") called");
     Flight curObj = (Flight) readData(id, Flight.getKey(flightNum));
@@ -170,7 +170,6 @@ public class FlightManagerTCP extends ResourceManagerTCP {
     } // else
     return (true);
   }
-
 
 
   public boolean deleteFlight(int id, int flightNum) {

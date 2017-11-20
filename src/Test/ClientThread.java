@@ -8,8 +8,9 @@ import server.ResImpl.InvalidTransactionException;
 import server.ResInterface.ResourceManager;
 
 public class ClientThread implements Runnable {
+
   private Thread t;
-  
+
   private ResourceManager mw;
   private int period;
   private int ROUNDS = 10;
@@ -27,27 +28,29 @@ public class ClientThread implements Runnable {
 
     this.rand = new Random();
   }
-  
+
   public void start() {
     if (t == null) {
       Thread t = new Thread(this);
       t.start();
     }
   }
-  
+
   @Override
   public void run() {
-    for (int i=0; i<ROUNDS; i++) {
+    for (int i = 0; i < ROUNDS; i++) {
       long waitTime = (long) rand.nextInt(period);
       try {
         Thread.sleep(waitTime * 2);
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
-      
+
       long start = System.nanoTime() / 1000;
       try {
-        while(ItineraryTransaction() == false);
+        while (ItineraryTransaction() == false) {
+          ;
+        }
         long duration = System.nanoTime() / 1000 - start;
         System.out.println(duration);
       } catch (Exception e) {
@@ -58,17 +61,17 @@ public class ClientThread implements Runnable {
   }
 
   public boolean ItineraryTransaction()
-    throws RemoteException, InvalidTransactionException {
-      int txnId = mw.start();
-      try {
-        int custId = mw.newCustomer(txnId);
-        mw.itinerary(txnId, custId, this.flights, this.location, true, true);
-        mw.commit(txnId);
-      } catch (DeadlockException e) {
-        mw.abort(txnId);
-        System.out.println("Deadlock!");
-        return false;
-      }
-      return true;
+      throws RemoteException, InvalidTransactionException {
+    int txnId = mw.start();
+    try {
+      int custId = mw.newCustomer(txnId);
+      mw.itinerary(txnId, custId, this.flights, this.location, true, true);
+      mw.commit(txnId);
+    } catch (DeadlockException e) {
+      mw.abort(txnId);
+      System.out.println("Deadlock!");
+      return false;
+    }
+    return true;
   }
 }

@@ -7,6 +7,7 @@ import java.util.Vector;
 import server.ResImpl.*;
 
 public class ResourceManagerTCP {
+
   protected RMHashtable m_itemHT = new RMHashtable();
 
   // Reads a data item
@@ -137,7 +138,7 @@ public class ResourceManagerTCP {
       Trace.warn(
           "RM::queryCustomerInfo(" + id + ", " + customerID + ") failed--customer doesn't exist");
       return ""; // NOTE: don't change this--WC counts on this value indicating a customer does not
-                 // exist...
+      // exist...
     } else {
       String s = cust.printBill();
       Trace.info("RM::queryCustomerInfo(" + id + ", " + customerID + "), bill follows...");
@@ -189,7 +190,7 @@ public class ResourceManagerTCP {
     } else {
       // Increase the reserved numbers of all reservable items which the customer reserved.
       RMHashtable reservationHT = cust.getReservations();
-      for (Enumeration e = reservationHT.keys(); e.hasMoreElements();) {
+      for (Enumeration e = reservationHT.keys(); e.hasMoreElements(); ) {
         String reservedkey = (String) (e.nextElement());
         ReservedItem reserveditem = cust.getReservedItem(reservedkey);
         Trace.info("RM::deleteCustomer(" + id + ", " + customerID + ") has reserved "

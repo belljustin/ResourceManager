@@ -17,6 +17,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 public class CarManagerTCP extends ResourceManagerTCP {
+
   private ServerSocket serverSocket = null;
 
   private ExecutorService executorService = Executors.newCachedThreadPool();
@@ -61,6 +62,7 @@ public class CarManagerTCP extends ResourceManagerTCP {
   }
 
   class ServiceRequest implements Runnable {
+
     private int Id;
     private String location;
     private int numCars;
@@ -80,9 +82,9 @@ public class CarManagerTCP extends ResourceManagerTCP {
       try {
         out = new PrintWriter(socket.getOutputStream(), true);
         in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-        
+
         Trace.info("" + socket.getLocalPort());
-        
+
         while ((inputLine = in.readLine()) != null) {
           Trace.info("FOO Recieved command: " + inputLine);
 

@@ -17,6 +17,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 public class HotelManagerTCP extends ResourceManagerTCP {
+
   private ServerSocket serverSocket = null;
 
   private ExecutorService executorService = Executors.newFixedThreadPool(10);
@@ -61,6 +62,7 @@ public class HotelManagerTCP extends ResourceManagerTCP {
   }
 
   class ServiceRequest implements Runnable {
+
     private Socket socket;
     PrintWriter out;
     BufferedReader in;

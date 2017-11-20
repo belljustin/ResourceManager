@@ -7,21 +7,23 @@ import java.net.UnknownHostException;
 
 
 public class TCPClient {
+
   static String message = "blank";
-  
+
   protected Socket socket;
 
   PrintWriter out;
   BufferedReader in;
   BufferedReader stdIn;
-  
+
   public TCPClient(String hostname, int port) throws UnknownHostException, IOException {
     socket = new Socket(hostname, port);
     out = new PrintWriter(socket.getOutputStream(), true);
     in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
   }
-  
-  @Override protected void finalize() throws Throwable {
+
+  @Override
+  protected void finalize() throws Throwable {
     socket.close();
     super.finalize();
   }
@@ -148,8 +150,8 @@ public class TCPClient {
           break;
 
         case 21: // quit the client
-           client.quit(arguments);
-           break;
+          client.quit(arguments);
+          break;
 
         case 22: // new Customer given id
           client.NewCustomerId(arguments);
@@ -175,52 +177,53 @@ public class TCPClient {
   }
 
   public int findChoice(String argument) {
-    if (argument.compareToIgnoreCase("help") == 0)
+    if (argument.compareToIgnoreCase("help") == 0) {
       return 1;
-    else if (argument.compareToIgnoreCase("newflight") == 0)
+    } else if (argument.compareToIgnoreCase("newflight") == 0) {
       return 2;
-    else if (argument.compareToIgnoreCase("newcar") == 0)
+    } else if (argument.compareToIgnoreCase("newcar") == 0) {
       return 3;
-    else if (argument.compareToIgnoreCase("newroom") == 0)
+    } else if (argument.compareToIgnoreCase("newroom") == 0) {
       return 4;
-    else if (argument.compareToIgnoreCase("newcustomer") == 0)
+    } else if (argument.compareToIgnoreCase("newcustomer") == 0) {
       return 5;
-    else if (argument.compareToIgnoreCase("deleteflight") == 0)
+    } else if (argument.compareToIgnoreCase("deleteflight") == 0) {
       return 6;
-    else if (argument.compareToIgnoreCase("deletecar") == 0)
+    } else if (argument.compareToIgnoreCase("deletecar") == 0) {
       return 7;
-    else if (argument.compareToIgnoreCase("deleteroom") == 0)
+    } else if (argument.compareToIgnoreCase("deleteroom") == 0) {
       return 8;
-    else if (argument.compareToIgnoreCase("deletecustomer") == 0)
+    } else if (argument.compareToIgnoreCase("deletecustomer") == 0) {
       return 9;
-    else if (argument.compareToIgnoreCase("queryflight") == 0)
+    } else if (argument.compareToIgnoreCase("queryflight") == 0) {
       return 10;
-    else if (argument.compareToIgnoreCase("querycar") == 0)
+    } else if (argument.compareToIgnoreCase("querycar") == 0) {
       return 11;
-    else if (argument.compareToIgnoreCase("queryroom") == 0)
+    } else if (argument.compareToIgnoreCase("queryroom") == 0) {
       return 12;
-    else if (argument.compareToIgnoreCase("querycustomer") == 0)
+    } else if (argument.compareToIgnoreCase("querycustomer") == 0) {
       return 13;
-    else if (argument.compareToIgnoreCase("queryflightprice") == 0)
+    } else if (argument.compareToIgnoreCase("queryflightprice") == 0) {
       return 14;
-    else if (argument.compareToIgnoreCase("querycarprice") == 0)
+    } else if (argument.compareToIgnoreCase("querycarprice") == 0) {
       return 15;
-    else if (argument.compareToIgnoreCase("queryroomprice") == 0)
+    } else if (argument.compareToIgnoreCase("queryroomprice") == 0) {
       return 16;
-    else if (argument.compareToIgnoreCase("reserveflight") == 0)
+    } else if (argument.compareToIgnoreCase("reserveflight") == 0) {
       return 17;
-    else if (argument.compareToIgnoreCase("reservecar") == 0)
+    } else if (argument.compareToIgnoreCase("reservecar") == 0) {
       return 18;
-    else if (argument.compareToIgnoreCase("reserveroom") == 0)
+    } else if (argument.compareToIgnoreCase("reserveroom") == 0) {
       return 19;
-    else if (argument.compareToIgnoreCase("itinerary") == 0)
+    } else if (argument.compareToIgnoreCase("itinerary") == 0) {
       return 20;
-    else if (argument.compareToIgnoreCase("quit") == 0)
+    } else if (argument.compareToIgnoreCase("quit") == 0) {
       return 21;
-    else if (argument.compareToIgnoreCase("newcustomerid") == 0)
+    } else if (argument.compareToIgnoreCase("newcustomerid") == 0) {
       return 22;
-    else
+    } else {
       return 666;
+    }
 
   }
 
@@ -281,7 +284,6 @@ public class TCPClient {
         System.out.println("\nUsage:");
         System.out.println("\tnewcustomer,<id>");
         break;
-
 
       case 6: // delete Flight
         System.out.println("Deleting a flight");
@@ -407,7 +409,6 @@ public class TCPClient {
             "\titinerary,<id>,<customerid>,<flightnumber1>....<flightnumberN>,<LocationToBookCarsOrRooms>,<NumberOfCars>,<NumberOfRoom>");
         break;
 
-
       case 21: // quit the client
         System.out.println("Quitting client.");
         System.out.println("Purpose:");
@@ -462,11 +463,15 @@ public class TCPClient {
 
   public void help(Vector<String> args) {
     if (args.size() == 1) // command was "help"
+    {
       listCommands();
-    else if (args.size() == 2) // command was "help <commandname>"
+    } else if (args.size() == 2) // command was "help <commandname>"
+    {
       listSpecific((String) args.elementAt(1));
-    else // wrong use of help command
+    } else // wrong use of help command
+    {
       System.out.println("Improper use of help command. Type help or help, <commandname>");
+    }
   }
 
   public void newFlight(Vector<String> args) {
@@ -484,12 +489,13 @@ public class TCPClient {
       getInt(args.elementAt(2));
       getInt(args.elementAt(3));
       getInt(args.elementAt(4));
-      
+
       String msg = String.join(",", args);
-      if (sendAndRecv(msg))
+      if (sendAndRecv(msg)) {
         System.out.println("Flight added");
-      else
+      } else {
         System.out.println("Flight could not be added");
+      }
     } catch (NumberFormatException e) {
       System.out.println("EXCEPTION:");
       System.out.println(e.getMessage());
@@ -513,10 +519,11 @@ public class TCPClient {
       getInt(args.elementAt(4));
 
       String msg = String.join(",", args);
-      if (sendAndRecv(msg))
+      if (sendAndRecv(msg)) {
         System.out.println("Cars added");
-      else
+      } else {
         System.out.println("Cars could not be added");
+      }
     } catch (Exception e) {
       System.out.println("EXCEPTION:");
       System.out.println(e.getMessage());
@@ -539,10 +546,11 @@ public class TCPClient {
       getInt(args.elementAt(3));
       getInt(args.elementAt(4));
       String msg = String.join(",", args);
-      if (sendAndRecv(msg))
+      if (sendAndRecv(msg)) {
         System.out.println("Rooms added");
-      else
+      } else {
         System.out.println("Rooms could not be added");
+      }
     } catch (Exception e) {
       System.out.println("EXCEPTION:");
       System.out.println(e.getMessage());
@@ -579,10 +587,11 @@ public class TCPClient {
       getInt(args.elementAt(1));
       getInt(args.elementAt(2));
       String msg = String.join(",", args);
-      if (sendAndRecv(msg))
+      if (sendAndRecv(msg)) {
         System.out.println("Flight Deleted");
-      else
+      } else {
         System.out.println("Flight could not be deleted");
+      }
     } catch (Exception e) {
       System.out.println("EXCEPTION:");
       System.out.println(e.getMessage());
@@ -603,10 +612,11 @@ public class TCPClient {
       getString(args.elementAt(2));
 
       String msg = String.join(",", args);
-      if (sendAndRecv(msg))
+      if (sendAndRecv(msg)) {
         System.out.println("Cars Deleted");
-      else
+      } else {
         System.out.println("Cars could not be deleted");
+      }
     } catch (Exception e) {
       System.out.println("EXCEPTION:");
       System.out.println(e.getMessage());
@@ -625,12 +635,13 @@ public class TCPClient {
     try {
       getInt(args.elementAt(1));
       getString(args.elementAt(2));
-      
+
       String msg = String.join(",", args);
-      if (sendAndRecv(msg))
+      if (sendAndRecv(msg)) {
         System.out.println("Rooms Deleted");
-      else
+      } else {
         System.out.println("Rooms could not be deleted");
+      }
     } catch (Exception e) {
       System.out.println("EXCEPTION:");
       System.out.println(e.getMessage());
@@ -648,12 +659,13 @@ public class TCPClient {
     try {
       getInt(args.elementAt(1));
       getInt(args.elementAt(2));
-      
+
       String msg = String.join(",", args);
-      if (sendAndRecv(msg))
+      if (sendAndRecv(msg)) {
         System.out.println("Customer Deleted");
-      else
+      } else {
         System.out.println("Customer could not be deleted");
+      }
     } catch (Exception e) {
       System.out.println("EXCEPTION:");
       System.out.println(e.getMessage());
@@ -671,7 +683,7 @@ public class TCPClient {
     try {
       getInt(args.elementAt(1));
       getInt(args.elementAt(2));
-      
+
       String msg = String.join(",", args);
       int seats = sendAndRecvInt(msg);
       System.out.println("Number of seats available:" + seats);
@@ -692,7 +704,7 @@ public class TCPClient {
     try {
       getInt(args.elementAt(1));
       getString(args.elementAt(2));
-      
+
       String msg = String.join(",", args);
       int numCars = sendAndRecvInt(msg);
       System.out.println("number of Cars at this location:" + numCars);
@@ -713,7 +725,7 @@ public class TCPClient {
     try {
       getInt(args.elementAt(1));
       getString(args.elementAt(2));
-      
+
       String msg = String.join(",", args);
       int numRooms = sendAndRecvInt(msg);
       System.out.println("number of Rooms at this location:" + numRooms);
@@ -734,7 +746,7 @@ public class TCPClient {
     try {
       getInt(args.elementAt(1));
       getInt(args.elementAt(2));
-      
+
       String msg = String.join(",", args);
       String bill = sendAndRecvStr(msg);
       System.out.println("Customer info:" + bill);
@@ -755,7 +767,7 @@ public class TCPClient {
     try {
       getInt(args.elementAt(1));
       getInt(args.elementAt(2));
-      
+
       String msg = String.join(",", args);
       int price = sendAndRecvInt(msg);
       System.out.println("Price of a seat:" + price);
@@ -776,7 +788,7 @@ public class TCPClient {
     try {
       getInt(args.elementAt(1));
       getString(args.elementAt(2));
-      
+
       String msg = String.join(",", args);
       int price = sendAndRecvInt(msg);
       System.out.println("Price of a car at this location:" + price);
@@ -797,7 +809,7 @@ public class TCPClient {
     try {
       getInt(args.elementAt(1));
       getString(args.elementAt(2));
-      
+
       String msg = String.join(",", args);
       int price = sendAndRecvInt(msg);
       System.out.println("Price of Rooms at this location:" + price);
@@ -820,12 +832,13 @@ public class TCPClient {
       getInt(args.elementAt(1));
       getInt(args.elementAt(2));
       getInt(args.elementAt(3));
-      
+
       String msg = String.join(",", args);
-      if (sendAndRecv(msg))
+      if (sendAndRecv(msg)) {
         System.out.println("Flight Reserved");
-      else
+      } else {
         System.out.println("Flight could not be reserved.");
+      }
     } catch (Exception e) {
       System.out.println("EXCEPTION:");
       System.out.println(e.getMessage());
@@ -848,10 +861,11 @@ public class TCPClient {
       getString(args.elementAt(3));
 
       String msg = String.join(",", args);
-      if (sendAndRecv(msg))
+      if (sendAndRecv(msg)) {
         System.out.println("Car Reserved");
-      else
+      } else {
         System.out.println("Car could not be reserved.");
+      }
     } catch (Exception e) {
       System.out.println("EXCEPTION:");
       System.out.println(e.getMessage());
@@ -873,10 +887,11 @@ public class TCPClient {
       getString(args.elementAt(3));
 
       String msg = String.join(",", args);
-      if (sendAndRecv(msg))
+      if (sendAndRecv(msg)) {
         System.out.println("Room Reserved");
-      else
+      } else {
         System.out.println("Room could not be reserved.");
+      }
     } catch (Exception e) {
       System.out.println("EXCEPTION:");
       System.out.println(e.getMessage());
@@ -891,8 +906,9 @@ public class TCPClient {
     }
     System.out.println("Reserving an Itinerary using id:" + args.elementAt(1));
     System.out.println("Customer id:" + args.elementAt(2));
-    for (int i = 0; i < args.size() - 6; i++)
+    for (int i = 0; i < args.size() - 6; i++) {
       System.out.println("Flight number" + args.elementAt(3 + i));
+    }
     System.out.println("Location for Car/Room booking:" + args.elementAt(args.size() - 3));
     System.out.println("Car to book?:" + args.elementAt(args.size() - 2));
     System.out.println("Room to book?:" + args.elementAt(args.size() - 1));
@@ -900,17 +916,19 @@ public class TCPClient {
       getInt(args.elementAt(1));
       getInt(args.elementAt(2));
       Vector<String> flightNumbers = new Vector<String>();
-      for (int i = 0; i < args.size() - 6; i++)
+      for (int i = 0; i < args.size() - 6; i++) {
         flightNumbers.addElement(args.elementAt(3 + i));
+      }
       getString(args.elementAt(args.size() - 3));
       getBoolean(args.elementAt(args.size() - 2));
       getBoolean(args.elementAt(args.size() - 1));
 
       String msg = String.join(",", args);
-      if (sendAndRecv(msg))
+      if (sendAndRecv(msg)) {
         System.out.println("Itinerary Reserved");
-      else
+      } else {
         System.out.println("Itinerary could not be reserved.");
+      }
     } catch (Exception e) {
       System.out.println("EXCEPTION:");
       System.out.println(e.getMessage());
@@ -938,7 +956,7 @@ public class TCPClient {
     try {
       getInt(args.elementAt(1));
       int Cid = getInt(args.elementAt(2));
-      
+
       String msg = String.join(",", args);
       sendAndRecv(msg);
       System.out.println("new customer id:" + Cid);
@@ -952,8 +970,8 @@ public class TCPClient {
   public Boolean sendAndRecv(String msg) {
     out.println(msg);
     try {
-    	String s = in.readLine();
-    	return Boolean.parseBoolean(s);
+      String s = in.readLine();
+      return Boolean.parseBoolean(s);
 //      return (in.readLine());
     } catch (IOException e) {
       // TODO Auto-generated catch block

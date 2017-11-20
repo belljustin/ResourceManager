@@ -4,22 +4,19 @@
 // -------------------------------
 package server.ResImpl;
 
-public class Hotel extends ReservableItem
-{
-		public Hotel( String location, int count, int price )
-		{
-			super( location, count, price );
-		}
+public class Hotel extends ReservableItem {
 
-		public String getKey()
-		{
-			return Hotel.getKey( getLocation() );
-		}
+  public Hotel(String location, int count, int price) {
+    super(location, count, price);
+  }
 
-		public static String getKey( String location )
-		{
-			String s = "room-" + location  ;
-			return s.toLowerCase();
-		}
+  public String getKey() {
+    return Hotel.getKey(getLocation());
+  }
+
+  public static String getKey(String location) {
+    String s = "room-" + location;
+    return s.toLowerCase();
+  }
 }
 
