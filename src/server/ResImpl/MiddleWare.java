@@ -547,19 +547,7 @@ public class MiddleWare implements ResourceManager
     // return a bill
     public String queryCustomerInfo(int id, int customerID)
         throws RemoteException, DeadlockException{
-//    {
     	addTime(id);
-//        Trace.info("RM::queryCustomerInfo(" + id + ", " + customerID + ") called" );
-//        Customer cust = (Customer) readData( id, Customer.getKey(customerID) );
-//        if ( cust == null ) {
-//            Trace.warn("RM::queryCustomerInfo(" + id + ", " + customerID + ") failed--customer doesn't exist" );
-//            return "";   // NOTE: don't change this--WC counts on this value indicating a customer does not exist...
-//        } else {
-//                String s = cust.printBill();
-//                Trace.info("RM::queryCustomerInfo(" + id + ", " + customerID + "), bill follows..." );
-//                System.out.println( s );
-//                return s;
-//        } // if
     	String toReturn;
         String A = hotelRM.queryCustomerInfo(id, customerID);
     	String B = carRM.queryCustomerInfo(id, customerID);
