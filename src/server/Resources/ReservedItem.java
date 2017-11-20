@@ -2,7 +2,7 @@
 // adapted from Kevin T. Manley
 // CSE 593
 // -------------------------------
-package server.ResImpl;
+package server.Resources;
 
 // Represents a customer's "reserved item" (e.g. Flight, Car, or Room)
 // NOTE: if a customer reserves more than one item of the same kind, this is stored as a single

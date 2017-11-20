@@ -2,7 +2,7 @@
 // adapted Kevin T. Manley
 // CSE 593
 // -------------------------------
-package server.ResImpl;
+package server.Resources;
 
 import java.io.Serializable;
 

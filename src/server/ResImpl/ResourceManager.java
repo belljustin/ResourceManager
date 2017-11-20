@@ -13,6 +13,11 @@ import java.util.HashMap;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import server.ResInterface.IResourceManager;
+import server.Resources.Customer;
+import server.Resources.RMHashtable;
+import server.Resources.RMItem;
+import server.Resources.ReservableItem;
+import server.Resources.ReservedItem;
 
 public abstract class ResourceManager implements IResourceManager {
 

@@ -11,6 +11,7 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import server.ResInterface.ICarManager;
+import server.Resources.Car;
 
 public class CarManager extends ResourceManager implements ICarManager {
 

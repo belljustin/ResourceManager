@@ -16,6 +16,7 @@ import server.ResInterface.ICarManager;
 import server.ResInterface.IFlightManager;
 import server.ResInterface.IHotelManager;
 import server.ResInterface.IMiddleWare;
+import server.Resources.RMHashtable;
 
 public class MiddleWare extends ResourceManager implements IMiddleWare {
 

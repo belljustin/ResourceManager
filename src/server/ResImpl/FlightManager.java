@@ -11,6 +11,7 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import server.ResInterface.IFlightManager;
+import server.Resources.Flight;
 
 public class FlightManager extends ResourceManager implements IFlightManager {
 

@@ -11,6 +11,7 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import server.ResInterface.IHotelManager;
+import server.Resources.Hotel;
 
 public class HotelManager extends ResourceManager implements IHotelManager {
 

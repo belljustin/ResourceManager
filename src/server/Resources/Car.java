@@ -3,7 +3,7 @@
 // CSE 593
 // -------------------------------
 
-package server.ResImpl;
+package server.Resources;
 
 public class Car extends ReservableItem {
 

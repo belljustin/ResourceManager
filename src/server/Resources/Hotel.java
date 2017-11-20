@@ -2,7 +2,7 @@
 // adapted from Kevin T. Manley
 // CSE 593
 // -------------------------------
-package server.ResImpl;
+package server.Resources;
 
 public class Hotel extends ReservableItem {
 
