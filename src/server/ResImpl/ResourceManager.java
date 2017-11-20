@@ -18,7 +18,6 @@ public abstract class ResourceManager implements IResourceManager {
 
   private RMHashtable m_itemHT = new RMHashtable();
 
-  private HashMap<Integer, RMHashtable> TxnCopies = new HashMap<Integer, RMHashtable>();
   private HashMap<Integer, RMHashtable> TxnWrites = new HashMap<Integer, RMHashtable>();
   private HashMap<Integer, RMHashtable> TxnDeletes = new HashMap<Integer, RMHashtable>();
   private LockManager lm = new LockManager();
@@ -49,8 +48,6 @@ public abstract class ResourceManager implements IResourceManager {
    * @return txnId
    */
   public int start(int txnId) throws RemoteException {
-    // Create a copy of the official HT for this txn
-    TxnCopies.put(txnId, m_itemHT.deepCopy());
     // Create an empty write set for this txn
     TxnWrites.put(txnId, new RMHashtable());
     TxnDeletes.put(txnId, new RMHashtable());
@@ -89,8 +86,6 @@ public abstract class ResourceManager implements IResourceManager {
       }
     }
 
-    // Remove write set and copy of stale txn
-    TxnCopies.remove(txnID);
     // TxnWrites.remove(txnID);
     TxnDeletes.remove(txnID);
 
@@ -103,8 +98,6 @@ public abstract class ResourceManager implements IResourceManager {
    */
   public void abort(int txnID)
       throws InvalidTransactionException, RemoteException {
-    // Remove write set and copy of stale txn
-    TxnCopies.remove(txnID);
     // TxnWrites.remove(txnID);
     TxnDeletes.remove(txnID);
 
@@ -119,30 +112,44 @@ public abstract class ResourceManager implements IResourceManager {
    */
   RMItem readData(int txnId, String key) throws DeadlockException {
     lm.Lock(txnId, key, LockManager.READ);
-    RMHashtable copy = TxnCopies.get(txnId);
-    synchronized (m_itemHT) {
-      try {
-        copy.put(key, m_itemHT.get(key));
-      } catch (NullPointerException e) {
-        // key doesn't exist yet
+
+    // First, check that we haven't removed the value
+    RMHashtable deletes = TxnDeletes.get(txnId);
+    synchronized (deletes) {
+      if (deletes.containsKey(key)) {
+        return null;
       }
     }
-    synchronized (copy) {
-      return (RMItem) copy.get(key);
+
+    // Check if we've already written this value in the current transaction
+    RMHashtable writes = TxnWrites.get(txnId);
+    synchronized (writes) {
+      if (writes.containsKey(key))
+        return (RMItem) writes.get(key);
+    }
+
+    // Otherwise, grab it from the official hashtable
+    synchronized (m_itemHT) {
+      return (RMItem) m_itemHT.get(key);
     }
   }
 
   /**
    * Writes a data item.
    */
-  void writeData(int id, String key, RMItem value) throws DeadlockException {
-    lm.Lock(id, key, LockManager.WRITE);
-    RMHashtable copy = TxnCopies.get(id);
-    synchronized (copy) {
-      copy.put(key, value);
+  void writeData(int txnId, String key, RMItem value) throws DeadlockException {
+    lm.Lock(txnId, key, LockManager.WRITE);
+
+    // Remove from the delete set if it was previously added in the current transaction
+    RMHashtable deletes = TxnDeletes.get(txnId);
+    synchronized (deletes) {
+      if (deletes.containsKey(key)) {
+        deletes.remove(key);
+      }
     }
 
-    RMHashtable writes = TxnWrites.get(id);
+    // Then write the value to the current transactions write set
+    RMHashtable writes = TxnWrites.get(txnId);
     synchronized (writes) {
       writes.put(key, value);
     }
@@ -156,15 +163,15 @@ public abstract class ResourceManager implements IResourceManager {
    */
   RMItem removeData(int id, String key) throws DeadlockException {
     lm.Lock(id, key, LockManager.WRITE);
+
+    RMItem toReturn = readData(id, key);
+
     RMHashtable deletes = TxnDeletes.get(id);
     synchronized (deletes) {
       deletes.put(key, null);
     }
 
-    RMHashtable copy = TxnCopies.get(id);
-    synchronized (copy) {
-      return (RMItem) copy.remove(key);
-    }
+    return toReturn;
   }
 
 
