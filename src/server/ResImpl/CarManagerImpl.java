@@ -23,6 +23,8 @@ public class CarManagerImpl implements ResourceManager
     
     protected RMHashtable m_itemHT = new RMHashtable();
     
+    static CarManagerImpl obj;
+    
     protected HashMap<Integer, RMHashtable> TxnCopies = new HashMap<Integer, RMHashtable>();
     protected HashMap<Integer, RMHashtable> TxnWrites = new HashMap<Integer, RMHashtable>();
     protected HashMap<Integer, RMHashtable> TxnDeletes = new HashMap<Integer, RMHashtable>();
@@ -47,7 +49,7 @@ public class CarManagerImpl implements ResourceManager
 
         try {
             // create a new Server object
-            CarManagerImpl obj = new CarManagerImpl();
+            obj = new CarManagerImpl();
             // dynamically generate the stub (client proxy)
             ResourceManager rm = (ResourceManager) UnicastRemoteObject.exportObject(obj, 0);
 
@@ -609,5 +611,13 @@ public class CarManagerImpl implements ResourceManager
     // Middleware handles setting the transaction ID
 	public int start() throws RemoteException {
 		throw new RemoteException("Not Implemented");
+	}
+
+	public boolean shutdown() throws RemoteException {
+		return false;
+	}
+	
+	public void shutdownRM() throws RemoteException {
+		UnicastRemoteObject.unexportObject(obj, true);
 	}
 }
