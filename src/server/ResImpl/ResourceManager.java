@@ -36,13 +36,8 @@ public abstract class ResourceManager implements IResourceManager {
   }
 
   void parseArgs(String args[]) throws IllegalArgumentException {
-    if (args.length > 1) {
-      throw new IllegalArgumentException("Too few arguments for IMiddleWare\n"
-          + "Usage: [port]");
-    }
-
     port = 1099;
-    if (args.length == 0) {
+    if (args.length > 0) {
       port = Integer.parseInt(args[0]);
     }
   }
