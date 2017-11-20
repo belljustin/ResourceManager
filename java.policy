@@ -1,5 +1,0 @@
-grant codeBase "file:/home/2013/jbell30/workspace/comp512/ResourceManager/bin/-" {
-    permission java.security.AllPermission;
-};
-
-
