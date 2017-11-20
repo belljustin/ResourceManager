@@ -3,11 +3,17 @@ package server.ResImpl;
 import server.ResInterface.*;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import LockManager.DeadlockException;
+import LockManager.LockManager;
 
 import java.rmi.registry.Registry;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
+import java.rmi.NotBoundException;
 import java.rmi.RMISecurityManager;
 
 public class MiddleWare implements ResourceManager 
@@ -19,7 +25,137 @@ public class MiddleWare implements ResourceManager
 	private Registry registry;
     
     protected RMHashtable m_itemHT = new RMHashtable();
+    protected volatile Integer txnCounter = 0;
+    
+    static MiddleWare middleWare;
+    
+    protected HashMap<Integer, RMHashtable> TxnCopies = new HashMap<Integer, RMHashtable>();
+    protected HashMap<Integer, RMHashtable> TxnWrites = new HashMap<Integer, RMHashtable>();
+    protected HashMap<Integer, RMHashtable> TxnDeletes = new HashMap<Integer, RMHashtable>();
+    protected LockManager lm = new LockManager();
+    private static final int TIME_TO_LIVE_IN_SECONDS = 360;
+    protected ConcurrentHashMap<Integer, Date> TimeToLive = new ConcurrentHashMap<Integer, Date>();
+    
+    public int start() throws RemoteException {
+    	int txnID;
+    	synchronized (txnCounter) {
+    		txnID = txnCounter++;
+    	}
+    	startTime(txnID);
 
+    	// Create a copy of the official HT for this txn
+    	TxnCopies.put(txnID, m_itemHT.deepCopy());
+    	// Create an empty write set for this txn
+    	TxnWrites.put(txnID, new RMHashtable());
+    	TxnDeletes.put(txnID, new RMHashtable());
+    	
+    	// Start the transaction in all the other RMs
+    	flightRM.start(txnID);
+    	carRM.start(txnID);
+    	hotelRM.start(txnID);
+    	
+    	return txnID;
+    }
+    
+    public void startTime(int txnID){
+    	   Calendar now = Calendar.getInstance();
+           now.add(Calendar.SECOND, TIME_TO_LIVE_IN_SECONDS);
+           Date timeToAdd = now.getTime();
+           TimeToLive.put(txnID, timeToAdd);
+    }
+    
+    public void addTime(int txnID){
+        if (TimeToLive.get(txnID) != null){
+        	startTime(txnID);
+        } else{
+        	System.out.println("Transaction does not exist!");
+        }
+    }
+    
+    public void removeTime(int txnID){
+    	TimeToLive.remove(txnID);
+    }
+    
+    public void killTransactions() throws InvalidTransactionException, RemoteException{
+    	Iterator it = TimeToLive.entrySet().iterator();
+    	System.out.println(TimeToLive.entrySet());
+    	while(it.hasNext()){
+    		Date currentTime = new Date();
+    		ConcurrentHashMap.Entry pair = (ConcurrentHashMap.Entry) it.next();
+    		int compare = currentTime.compareTo((Date) pair.getValue());
+    		if(compare > 0){
+    			int txnIDtoKill = (int) pair.getKey();
+    			System.out.println("Transaction " + txnIDtoKill + " timed out");
+    			abort(txnIDtoKill);
+    			it.remove();
+    		}
+    	}
+    }
+     
+    
+    // Middleware doesn't start transaction by ID
+    public int start(int txnID) throws RemoteException {
+    	startTime(txnID);
+    	throw new RemoteException("Not implmented");
+    }
+    
+    public boolean commit(int txnID) throws InvalidTransactionException, RemoteException {
+    	// Check if the txn exists
+    	if (!TxnCopies.containsKey(txnID)) {
+    		throw new InvalidTransactionException(txnID);
+    	}
+    	System.out.println("removing txnid: " + txnID);
+
+    	synchronized(m_itemHT) {
+			// Add all the writes from txn write set to offical HT
+			RMHashtable writes = TxnWrites.get(txnID);
+			Set<String> keys = writes.keySet();
+			for(String key: keys) {
+				m_itemHT.put(key, writes.get(key));
+			}
+
+			// Delete all the deletes from txn delete set from official HT
+			RMHashtable deletes = TxnDeletes.get(txnID);
+			keys = deletes.keySet();
+			for(String key: keys) {
+				m_itemHT.remove(key);
+			}
+    	}
+    	
+    	// Remove write set and copy of stale txn
+    	TxnCopies.remove(txnID);
+    	// TxnWrites.remove(txnID);
+    	TxnDeletes.remove(txnID);
+    	
+    	// Commit the transaction in all the other RMs
+    	flightRM.commit(txnID);
+    	carRM.commit(txnID);
+    	hotelRM.commit(txnID);
+    	
+    	lm.UnlockAll(txnID);
+    	removeTime(txnID);
+    	return true;
+    }
+    
+    public void abort(int txnID) throws InvalidTransactionException, RemoteException {
+    	if (!TxnCopies.containsKey(txnID)) {
+    		throw new InvalidTransactionException(txnID);
+    	}
+    	System.out.println("removing txnid: " + txnID);
+
+    	// Remove write set and copy of stale txn
+    	TxnCopies.remove(txnID);
+    	// TxnWrites.remove(txnID);
+    	TxnDeletes.remove(txnID);
+
+    	// Commit the transaction in all the other RMs
+    	flightRM.abort(txnID);
+    	carRM.abort(txnID);
+    	hotelRM.abort(txnID);
+
+    	lm.UnlockAll(txnID);
+    	removeTime(txnID);
+    }
 
     public static void main(String args[]) {
         // Figure out where server is running
@@ -35,13 +171,29 @@ public class MiddleWare implements ResourceManager
             System.exit(1);
         }
         
-            MiddleWare middleWare = new MiddleWare();
+            middleWare = new MiddleWare();
             middleWare.attachRegistry(port,middleWare);
             try {
             	middleWare.connectRM();
             } catch (Exception e) {
             	System.out.println("Exception: " + e.toString());
             }
+            
+      	  Thread t1 = new Thread(new Runnable() {
+ 	         public void run() {
+ 	              while(true){
+ 	            	  try {
+							middleWare.killTransactions();
+							Thread.sleep(1000);
+						} catch (Exception e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+ 	            	  
+ 	              }
+ 	         }
+ 	    });  
+ 	    t1.start();	 
   
 
     
@@ -116,50 +268,76 @@ public class MiddleWare implements ResourceManager
     
     // Adds flight reservation to this customer.  
     public boolean reserveFlight(int id, int customerID, int flightNum)
-        throws RemoteException
+        throws RemoteException, DeadlockException
     {
+    	addTime(id);
         return flightRM.reserveFlight(id, customerID, flightNum);
     }
     
     // Create a new flight, or add seats to existing flight
     //  NOTE: if flightPrice <= 0 and the flight already exists, it maintains its current price
-    public boolean addFlight(int id, int flightNum, int flightSeats, int flightPrice) throws RemoteException {
+    public boolean addFlight(int id, int flightNum, int flightSeats, int flightPrice) throws RemoteException, DeadlockException {
+    	addTime(id);
     	return flightRM.addFlight(id, flightNum, flightSeats, flightPrice);
 
     }
     
-    public boolean deleteFlight(int id, int flightNum) throws RemoteException
+    public boolean deleteFlight(int id, int flightNum) throws RemoteException, DeadlockException
     {
-        return flightRM.deleteFlight(id, flightNum);
+    	addTime(id);
+    	return flightRM.deleteFlight(id, flightNum);
     }
      
 
     // Reads a data item
-    private RMItem readData( int id, String key )
+    private RMItem readData( int id, String key ) throws DeadlockException
     {
-        synchronized(m_itemHT) {
-            return (RMItem) m_itemHT.get(key);
-        }
+    	lm.Lock(id, key, LockManager.READ);
+    	RMHashtable copy = TxnCopies.get(id);
+    	synchronized (m_itemHT) {
+    		try {
+    			copy.put(key, m_itemHT.get(key));
+    		} catch(NullPointerException e) {
+    			// key doesn't exist yet
+    		}
+    	}
+		synchronized(copy) {
+			return (RMItem) copy.get(key);
+		}
     }
 
     // Writes a data item
-    private void writeData( int id, String key, RMItem value )
+    private void writeData( int id, String key, RMItem value ) throws DeadlockException
     {
-        synchronized(m_itemHT) {
-            m_itemHT.put(key, value);
+    	lm.Lock(id, key, LockManager.WRITE);
+    	RMHashtable copy = TxnCopies.get(id);
+		synchronized(copy) {
+			copy.put(key, value);
+		}
+
+    	RMHashtable writes = TxnWrites.get(id);
+        synchronized(writes) {
+            writes.put(key, value);
         }
     }
     
     // Remove the item out of storage
-    protected RMItem removeData(int id, String key) {
-        synchronized(m_itemHT) {
-            return (RMItem)m_itemHT.remove(key);
+    protected RMItem removeData(int id, String key) throws DeadlockException {
+    	lm.Lock(id, key, LockManager.WRITE);
+    	RMHashtable deletes = TxnDeletes.get(id);
+        synchronized(deletes) {
+        	deletes.put(key, null);
         }
+
+    	RMHashtable copy = TxnCopies.get(id);
+		synchronized(copy) {
+			return (RMItem) copy.remove(key);
+		}
     }
     
     
     // deletes the entire item
-    protected boolean deleteItem(int id, String key)
+    protected boolean deleteItem(int id, String key) throws DeadlockException
     {
         Trace.info("RM::deleteItem(" + id + ", " + key + ") called" );
         ReservableItem curObj = (ReservableItem) readData( id, key );
@@ -182,7 +360,7 @@ public class MiddleWare implements ResourceManager
     
 
     // query the number of available seats/rooms/cars
-    protected int queryNum(int id, String key) {
+    protected int queryNum(int id, String key) throws DeadlockException {
         Trace.info("RM::queryNum(" + id + ", " + key + ") called" );
         ReservableItem curObj = (ReservableItem) readData( id, key);
         int value = 0;  
@@ -194,7 +372,7 @@ public class MiddleWare implements ResourceManager
     }    
     
     // query the price of an item
-    protected int queryPrice(int id, String key) {
+    protected int queryPrice(int id, String key) throws DeadlockException {
         Trace.info("RM::queryCarsPrice(" + id + ", " + key + ") called" );
         ReservableItem curObj = (ReservableItem) readData( id, key);
         int value = 0; 
@@ -206,7 +384,7 @@ public class MiddleWare implements ResourceManager
     }
     
     // reserve an item
-    protected boolean reserveItem(int id, int customerID, String key, String location) {
+    protected boolean reserveItem(int id, int customerID, String key, String location) throws DeadlockException {
         Trace.info("RM::reserveItem( " + id + ", customer=" + customerID + ", " +key+ ", "+location+" ) called" );        
         // Read customer object if it exists (and read lock it)
         Customer cust = (Customer) readData( id, Customer.getKey(customerID) );        
@@ -247,31 +425,35 @@ public class MiddleWare implements ResourceManager
     // Create a new room location or add rooms to an existing location
     //  NOTE: if price <= 0 and the room location already exists, it maintains its current price
     public boolean addRooms(int id, String location, int count, int price)
-        throws RemoteException
+        throws RemoteException, DeadlockException
     {
+    	addTime(id);
      return hotelRM.addRooms(id, location, count, price);
     }
 
     // Delete rooms from a location
     public boolean deleteRooms(int id, String location)
-        throws RemoteException
+        throws RemoteException, DeadlockException
     {
+    	addTime(id);
         return hotelRM.deleteRooms(id, location);
     }
 
     // Create a new car location or add cars to an existing location
     //  NOTE: if price <= 0 and the location already exists, it maintains its current price
     public boolean addCars(int id, String location, int count, int price)
-        throws RemoteException
+        throws RemoteException, DeadlockException
     {
+    	addTime(id);
     	return carRM.addCars(id, location, count, price);
     }
 
 
     // Delete cars from a location
     public boolean deleteCars(int id, String location)
-        throws RemoteException
+        throws RemoteException, DeadlockException
     {
+    	addTime(id);
         return carRM.deleteCars(id, location);
     }
 
@@ -279,8 +461,9 @@ public class MiddleWare implements ResourceManager
 
     // Returns the number of empty seats on this flight
     public int queryFlight(int id, int flightNum)
-        throws RemoteException
+        throws RemoteException, DeadlockException
     {
+    	addTime(id);
         return flightRM.queryFlight(id, flightNum);
     }
 
@@ -300,16 +483,18 @@ public class MiddleWare implements ResourceManager
 
     // Returns price of this flight
     public int queryFlightPrice(int id, int flightNum )
-        throws RemoteException
+        throws RemoteException, DeadlockException
     {
+    	addTime(id);
         return flightRM.queryFlightPrice(id, flightNum);
     }
 
 
     // Returns the number of rooms available at a location
     public int queryRooms(int id, String location)
-        throws RemoteException
+        throws RemoteException, DeadlockException
     {
+    	addTime(id);
         return hotelRM.queryRooms(id, location);
     }
 
@@ -318,24 +503,27 @@ public class MiddleWare implements ResourceManager
     
     // Returns room price at this location
     public int queryRoomsPrice(int id, String location)
-        throws RemoteException
+        throws RemoteException, DeadlockException
     {
+    	addTime(id);
         return hotelRM.queryRoomsPrice(id, location);
     }
 
 
     // Returns the number of cars available at a location
     public int queryCars(int id, String location)
-        throws RemoteException
+        throws RemoteException, DeadlockException
     {
+    	addTime(id);
         return carRM.queryCars(id, location);
     }
 
 
     // Returns price of cars at this location
     public int queryCarsPrice(int id, String location)
-        throws RemoteException
+        throws RemoteException, DeadlockException
     {
+    	addTime(id);
         return carRM.queryCarsPrice(id, location);
     }
 
@@ -343,8 +531,9 @@ public class MiddleWare implements ResourceManager
     //  customer doesn't exist. Returns empty RMHashtable if customer exists but has no
     //  reservations.
     public RMHashtable getCustomerReservations(int id, int customerID)
-        throws RemoteException
+        throws RemoteException, DeadlockException
     {
+    	addTime(id);
         Trace.info("RM::getCustomerReservations(" + id + ", " + customerID + ") called" );
         Customer cust = (Customer) readData( id, Customer.getKey(customerID) );
         if ( cust == null ) {
@@ -357,20 +546,8 @@ public class MiddleWare implements ResourceManager
 
     // return a bill
     public String queryCustomerInfo(int id, int customerID)
-
-        throws RemoteException{
-//    {
-//        Trace.info("RM::queryCustomerInfo(" + id + ", " + customerID + ") called" );
-//        Customer cust = (Customer) readData( id, Customer.getKey(customerID) );
-//        if ( cust == null ) {
-//            Trace.warn("RM::queryCustomerInfo(" + id + ", " + customerID + ") failed--customer doesn't exist" );
-//            return "";   // NOTE: don't change this--WC counts on this value indicating a customer does not exist...
-//        } else {
-//                String s = cust.printBill();
-//                Trace.info("RM::queryCustomerInfo(" + id + ", " + customerID + "), bill follows..." );
-//                System.out.println( s );
-//                return s;
-//        } // if
+        throws RemoteException, DeadlockException{
+    	addTime(id);
     	String toReturn;
         String A = hotelRM.queryCustomerInfo(id, customerID);
     	String B = carRM.queryCustomerInfo(id, customerID);
@@ -392,8 +569,9 @@ public class MiddleWare implements ResourceManager
     // new customer just returns a unique customer identifier
     
     public synchronized int newCustomer(int id)
-        throws RemoteException
+        throws RemoteException, DeadlockException
     {
+    	addTime(id);
         Trace.info("INFO: RM::newCustomer(" + id + ") called" );
         // Generate a globally unique ID for the new customer
         int cid = Integer.parseInt( String.valueOf(id) +
@@ -408,10 +586,11 @@ public class MiddleWare implements ResourceManager
         return cid;
     }
 
-
+    // I opted to pass in customerID instead. This makes testing easier
     public synchronized boolean newCustomer(int id, int customerID )
-        throws RemoteException
+        throws RemoteException, DeadlockException
     {
+    	addTime(id);
         Trace.info("INFO: RM::newCustomer(" + id + ", " + customerID + ") called" );
         Customer cust = (Customer) readData( id, Customer.getKey(customerID) );
         if ( cust == null ) {
@@ -431,8 +610,9 @@ public class MiddleWare implements ResourceManager
 
     // Deletes customer from the database. 
     public synchronized boolean deleteCustomer(int id, int customerID)
-        throws RemoteException
+        throws RemoteException, DeadlockException
     {
+    	addTime(id);
         Trace.info("RM::deleteCustomer(" + id + ", " + customerID + ") called" );
         Customer cust = (Customer) readData( id, Customer.getKey(customerID) );
         if ( cust == null ) {
@@ -485,24 +665,27 @@ public class MiddleWare implements ResourceManager
     
     // Adds car reservation to this customer. 
     public boolean reserveCar(int id, int customerID, String location)
-        throws RemoteException
+        throws RemoteException, DeadlockException
     {
+    	addTime(id);
         return carRM.reserveCar(id, customerID, location);
     }
 
 
     // Adds room reservation to this customer. 
     public boolean reserveRoom(int id, int customerID, String location)
-        throws RemoteException
+        throws RemoteException, DeadlockException
     {
+    	addTime(id);
         return hotelRM.reserveRoom(id, customerID, location);
     }
 
     
     // Reserve an itinerary 
     public boolean itinerary(int id,int customer,Vector flightNumbers,String location,boolean Car,boolean Room)
-        throws RemoteException
+        throws RemoteException, DeadlockException
     {
+    	addTime(id);
     	boolean flag = true;
     	boolean carFlag = true;
     	boolean hotelFlag = true;
@@ -525,6 +708,19 @@ public class MiddleWare implements ResourceManager
     	
     	
      return (flag && carFlag && hotelFlag);
+    }
+    
+    public void shutdownRM() throws RemoteException {}
+    
+    public boolean shutdown() throws RemoteException {
+		while (!TimeToLive.isEmpty());
+		
+		hotelRM.shutdownRM();
+		carRM.shutdownRM();
+		flightRM.shutdownRM();
+
+		UnicastRemoteObject.unexportObject(middleWare, true);
+    	return true;
     }
     
 //	public Boolean checkNumeric(String msg) {

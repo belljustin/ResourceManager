@@ -33,4 +33,13 @@ public class RMHashtable extends Hashtable
 			System.out.println( toString() );
  		}
 
+		public RMHashtable deepCopy() {
+			RMHashtable copy = new RMHashtable();
+			Object key = null;
+			for (Enumeration e = keys(); e.hasMoreElements(); ) {
+				key = e.nextElement();
+				copy.put(key, this.get(key));
+			}
+			return copy;
+		}
 }

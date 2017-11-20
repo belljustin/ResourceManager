@@ -2,3 +2,8 @@ bin
 *swp
 
 java.policy
+.classpath
+.project
+*class
+*csv
+

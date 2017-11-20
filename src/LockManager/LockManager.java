@@ -203,6 +203,13 @@ public class LockManager
                     // (2) transaction already had a WRITE lock
                     // Seeing the comments at the top of this function might be helpful
                     // *** ADD CODE HERE *** to take care of both these cases
+                	if (dataObj2.getLockType() == DataObj.WRITE) {
+                		throw new RedundantLockRequestException(dataObj.getXId(), "Redundant WRITE lock request");
+                	} else if (vect.size() > 1) {
+                		// If there's any other locks on the object ==> conflict
+                		System.out.println("Want to convert lock to WRITE but someone has READ or WRITE");
+                		return true;
+                	}
                 }
             } 
             else {
