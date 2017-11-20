@@ -4,7 +4,7 @@
 // -------------------------------
 package server.ResImpl;
 
-import java.io.*;
+import java.io.Serializable;
 
 // A simple Integer wrapper
 public class RMInteger extends RMItem implements Serializable {

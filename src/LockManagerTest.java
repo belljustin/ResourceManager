@@ -1,4 +1,5 @@
-import LockManager.*;
+import LockManager.DeadlockException;
+import LockManager.LockManager;
 
 class LockManagerTest {
 

@@ -1,18 +1,20 @@
 package client;
 
-import server.ResInterface.*;
+import LockManager.DeadlockException;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
-import java.rmi.RMISecurityManager;
-import java.util.*;
-import LockManager.DeadlockException;
-import java.io.*;
+import java.util.StringTokenizer;
+import java.util.Vector;
+import server.ResInterface.IMiddleWare;
 
 
 public class Client {
 
   static String message = "blank";
-  static ResourceManager rm = null;
+  static IMiddleWare rm = null;
 
   public static void main(String args[]) {
     Client obj = new Client();
@@ -48,8 +50,7 @@ public class Client {
       // get a reference to the rmiregistry
       Registry registry = LocateRegistry.getRegistry(server, port);
       // get the proxy and the remote reference by rmiregistry lookup
-      // rm = (ResourceManager) registry.lookup("PG12ResourceManager");
-      rm = (ResourceManager) registry.lookup("PG12MiddleWare");
+      rm = (IMiddleWare) registry.lookup("PG12MiddleWare");
       if (rm != null) {
         System.out.println("Successful");
         System.out.println("Connected to RM");

@@ -4,7 +4,8 @@
 // -------------------------------
 package server.ResImpl;
 
-import java.util.*;
+import java.util.Enumeration;
+import java.util.Hashtable;
 
 
 // A specialization of Hashtable with some

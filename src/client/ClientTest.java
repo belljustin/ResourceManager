@@ -1,17 +1,16 @@
 package client;
 
+import LockManager.DeadlockException;
+import Test.ClientThread;
+import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.Vector;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.rmi.RemoteException;
-
 import server.ResImpl.InvalidTransactionException;
-import server.ResInterface.*;
-import Test.ClientThread;
-import LockManager.DeadlockException;
+import server.ResInterface.IMiddleWare;
 
 
 public class ClientTest {
@@ -23,7 +22,7 @@ public class ClientTest {
 
 
   public static void main(String args[]) {
-    ResourceManager middleware = getMiddleware(args);
+    IMiddleWare middleware = getMiddleware(args);
 
     LOAD = Float.valueOf(args[2]);
     PERIOD = (int) (1 / LOAD * 1000); // transaction period in milliseconds
@@ -56,7 +55,7 @@ public class ClientTest {
     }
   }
 
-  public static void setup(ResourceManager mw)
+  public static void setup(IMiddleWare mw)
       throws RemoteException, DeadlockException, InvalidTransactionException {
     int txnId = mw.start();
     mw.addCars(txnId, "lax", 1000, 200);
@@ -66,8 +65,8 @@ public class ClientTest {
     mw.commit(txnId);
   }
 
-  public static ResourceManager getMiddleware(String args[]) {
-    ResourceManager mw = null;
+  public static IMiddleWare getMiddleware(String args[]) {
+    IMiddleWare mw = null;
 
     String server = "localhost";
     if (args.length > 0) {
@@ -81,7 +80,7 @@ public class ClientTest {
 
     try {
       Registry registry = LocateRegistry.getRegistry(server, port);
-      mw = (ResourceManager) registry.lookup("PG12MiddleWare");
+      mw = (IMiddleWare) registry.lookup("PG12MiddleWare");
       if (mw == null) {
         System.out.println("Couldn't connect to middleware");
         System.exit(-1);

@@ -4,7 +4,7 @@
 // -------------------------------
 package server.ResImpl;
 
-import java.util.*;
+import java.util.Enumeration;
 
 public class Customer extends RMItem {
 

@@ -4,7 +4,7 @@
 // -------------------------------
 package server.ResImpl;
 
-import java.io.*;
+import java.io.Serializable;
 
 // Resource manager data item
 public abstract class RMItem implements Serializable {

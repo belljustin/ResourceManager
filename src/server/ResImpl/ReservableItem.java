@@ -4,7 +4,7 @@
 // -------------------------------
 package server.ResImpl;
 
-import java.io.*;
+import java.io.Serializable;
 
 // Superclass for the three reservable items, Flight, Car, and Hotel
 public abstract class ReservableItem extends RMItem implements Serializable {
