@@ -113,7 +113,7 @@ public class MiddleWare extends ResourceManager implements IMiddleWare {
       int compare = currentTime.compareTo((Date) pair.getValue());
       if (compare > 0) {
         int txnIDtoKill = (int) pair.getKey();
-        Trace.info("Transaction " + txnIDtoKill + "timed out");
+        Trace.info("Transaction " + txnIDtoKill + " timed out");
         abort(txnIDtoKill);
         it.remove();
       }
@@ -166,7 +166,7 @@ public class MiddleWare extends ResourceManager implements IMiddleWare {
     Trace.info("Aborting txnId: " + txnId);
 
     // Check if the txn exists
-    if (!TimeToLive.contains(txnId)) {
+    if (!TimeToLive.containsKey(txnId)) {
       Trace.info("txnId " + txnId + " does not exist");
     }
 
@@ -420,4 +420,3 @@ public class MiddleWare extends ResourceManager implements IMiddleWare {
     return true;
   }
 }
-
