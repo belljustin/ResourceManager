@@ -1,48 +1,48 @@
 package client;
 
+import LockManager.DeadlockException;
+import Test.ClientThread;
+import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.Vector;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.rmi.RemoteException;
-
 import server.ResImpl.InvalidTransactionException;
-import server.ResInterface.*;
-import Test.ClientThread;
-import LockManager.DeadlockException;
+import server.ResInterface.IMiddleWare;
 
 
 public class ClientTest {
+
   static int NUM_CLIENTS = 5;
   static float LOAD = 20; // transactions per second
   static int PERIOD = (int) (1 / LOAD * 1000); // transaction period in milliseconds
   static int TPERIOD = PERIOD * NUM_CLIENTS; // transaction period of each client
-  
-  
+
+
   public static void main(String args[]) {
-    ResourceManager middleware = getMiddleware(args);
+    IMiddleWare middleware = getMiddleware(args);
 
     LOAD = Float.valueOf(args[2]);
     PERIOD = (int) (1 / LOAD * 1000); // transaction period in milliseconds
     TPERIOD = PERIOD * NUM_CLIENTS; // transaction period of each client
     NUM_CLIENTS = Integer.valueOf(args[3]);
-    
+
     try {
       setup(middleware);
     } catch (RemoteException | DeadlockException | InvalidTransactionException e) {
       e.printStackTrace();
       System.exit(-1);
     }
-    
+
     Vector<String> flights = new Vector<String>();
     flights.add("300");
     flights.add("200");
     String location = "lax";
-    
+
     ExecutorService es = Executors.newCachedThreadPool();
-    for (int i=0; i<NUM_CLIENTS; i++) {
+    for (int i = 0; i < NUM_CLIENTS; i++) {
       ClientThread ct = new ClientThread(middleware, TPERIOD, flights, location);
       es.execute(ct);
     }
@@ -55,7 +55,7 @@ public class ClientTest {
     }
   }
 
-  public static void setup(ResourceManager mw)
+  public static void setup(IMiddleWare mw)
       throws RemoteException, DeadlockException, InvalidTransactionException {
     int txnId = mw.start();
     mw.addCars(txnId, "lax", 1000, 200);
@@ -64,10 +64,10 @@ public class ClientTest {
     mw.addRooms(txnId, "lax", 1000, 200);
     mw.commit(txnId);
   }
-  
-  public static ResourceManager getMiddleware(String args[]) {
-    ResourceManager mw = null;
-    
+
+  public static IMiddleWare getMiddleware(String args[]) {
+    IMiddleWare mw = null;
+
     String server = "localhost";
     if (args.length > 0) {
       server = args[0];
@@ -77,19 +77,19 @@ public class ClientTest {
     if (args.length > 1) {
       port = Integer.parseInt(args[1]);
     }
-    
+
     try {
       Registry registry = LocateRegistry.getRegistry(server, port);
-      mw = (ResourceManager) registry.lookup("PG12MiddleWare");
+      mw = (IMiddleWare) registry.lookup("PG12MiddleWare");
       if (mw == null) {
         System.out.println("Couldn't connect to middleware");
         System.exit(-1);
       }
-    } catch (Exception e) {    
+    } catch (Exception e) {
       System.err.println("Client exception: " + e.toString());
       e.printStackTrace();
     }
-    
+
     return mw;
   }
 }
