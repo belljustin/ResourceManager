@@ -10,6 +10,7 @@ import java.rmi.RemoteException;
 import java.util.Calendar;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import server.ResInterface.IResourceManager;
@@ -24,7 +25,7 @@ public abstract class ResourceManager implements IResourceManager {
   private RMHashtable m_itemHT = new RMHashtable();
 
   private HashMap<Integer, RMHashtable> TxnWrites = new HashMap<Integer, RMHashtable>();
-  private HashMap<Integer, RMHashtable> TxnDeletes = new HashMap<Integer, RMHashtable>();
+  private HashMap<Integer, HashSet> TxnDeletes = new HashMap<Integer, HashSet>();
   private LockManager lm = new LockManager();
 
   int port;
@@ -50,7 +51,7 @@ public abstract class ResourceManager implements IResourceManager {
   public int start(int txnId) throws RemoteException {
     // Create an empty write set for this txn
     TxnWrites.put(txnId, new RMHashtable());
-    TxnDeletes.put(txnId, new RMHashtable());
+    TxnDeletes.put(txnId, new HashSet<String>());
     return txnId;
   }
 
@@ -79,9 +80,8 @@ public abstract class ResourceManager implements IResourceManager {
       }
 
       // Delete all the deletes from txn delete set from official HT
-      RMHashtable deletes = TxnDeletes.get(txnID);
-      keys = deletes.keySet();
-      for (String key : keys) {
+      HashSet<String> deletes = TxnDeletes.get(txnID);
+      for (String key : deletes) {
         m_itemHT.remove(key);
       }
     }
@@ -114,9 +114,9 @@ public abstract class ResourceManager implements IResourceManager {
     lm.Lock(txnId, key, LockManager.READ);
 
     // First, check that we haven't removed the value
-    RMHashtable deletes = TxnDeletes.get(txnId);
+    HashSet deletes = TxnDeletes.get(txnId);
     synchronized (deletes) {
-      if (deletes.containsKey(key)) {
+      if (deletes.contains(key)) {
         return null;
       }
     }
@@ -141,9 +141,9 @@ public abstract class ResourceManager implements IResourceManager {
     lm.Lock(txnId, key, LockManager.WRITE);
 
     // Remove from the delete set if it was previously added in the current transaction
-    RMHashtable deletes = TxnDeletes.get(txnId);
+    HashSet<String> deletes = TxnDeletes.get(txnId);
     synchronized (deletes) {
-      if (deletes.containsKey(key)) {
+      if (deletes.contains(key)) {
         deletes.remove(key);
       }
     }
@@ -166,9 +166,9 @@ public abstract class ResourceManager implements IResourceManager {
 
     RMItem toReturn = readData(id, key);
 
-    RMHashtable deletes = TxnDeletes.get(id);
+    HashSet deletes = TxnDeletes.get(id);
     synchronized (deletes) {
-      deletes.put(key, null);
+      deletes.add(key);
     }
 
     return toReturn;
