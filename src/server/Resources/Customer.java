@@ -4,6 +4,11 @@
 // -------------------------------
 package server.Resources;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.Enumeration;
 
 public class Customer extends RMItem {
@@ -77,4 +82,19 @@ public class Customer extends RMItem {
   private int m_nID;
   private RMHashtable m_Reservations;
 
+  public Customer deepClone() {
+	try {
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		ObjectOutputStream oos = new ObjectOutputStream(baos);
+		oos.writeObject(this);
+
+		ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
+		ObjectInputStream ois = new ObjectInputStream(bais);
+		return (Customer) ois.readObject();
+	} catch (IOException e) {
+		return null;
+	} catch (ClassNotFoundException e) {
+		return null;
+	}
+  }
 }

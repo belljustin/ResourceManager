@@ -244,6 +244,7 @@ public abstract class ResourceManager implements IResourceManager {
         + " ) called");
     // Read customer object if it exists (and read lock it)
     Customer cust = (Customer) readData(id, Customer.getKey(customerID));
+
     if (cust == null) {
       Trace.warn("RM::reserveCar( " + id + ", " + customerID + ", " + key + ", " + location
           + ")  failed--customer doesn't exist");
@@ -261,12 +262,16 @@ public abstract class ResourceManager implements IResourceManager {
           + ") failed--No more items");
       return false;
     } else {
-      cust.reserve(key, location, item.getPrice());
-      writeData(id, cust.getKey(), cust);
+    
+      Customer custCopy = cust.deepClone();
+      custCopy.reserve(key, location, item.getPrice());
+      writeData(id, custCopy.getKey(), custCopy);
 
       // decrease the number of available items in the storage
-      item.setCount(item.getCount() - 1);
-      item.setReserved(item.getReserved() + 1);
+      ReservableItem itemCopy = item.deepClone();
+      itemCopy.setCount(item.getCount() - 1);
+      itemCopy.setReserved(item.getReserved() + 1);
+      writeData(id, key, itemCopy);
 
       Trace.info("RM::reserveItem( " + id + ", " + customerID + ", " + key + ", " + location
           + ") succeeded");
@@ -379,12 +384,16 @@ public abstract class ResourceManager implements IResourceManager {
         ReservedItem reserveditem = cust.getReservedItem(reservedkey);
         Trace.info("RM::deleteCustomer(" + id + ", " + customerID + ") has reserved " + reserveditem
             .getKey() + " " + reserveditem.getCount() + " times");
+
         ReservableItem item = (ReservableItem) readData(id, reserveditem.getKey());
+        ReservableItem itemCopy = item.deepClone();
+        
         Trace.info("RM::deleteCustomer(" + id + ", " + customerID + ") has reserved " + reserveditem
-            .getKey() + "which is reserved" + item.getReserved() + " times and is still available "
-            + item.getCount() + " times");
-        item.setReserved(item.getReserved() - reserveditem.getCount());
-        item.setCount(item.getCount() + reserveditem.getCount());
+            .getKey() + "which is reserved" + itemCopy.getReserved() + " times and is still available "
+            + itemCopy.getCount() + " times");
+        itemCopy.setReserved(itemCopy.getReserved() - reserveditem.getCount());
+        itemCopy.setCount(itemCopy.getCount() + reserveditem.getCount());
+        writeData(id, reserveditem.getKey(), itemCopy);
       }
 
       // remove the customer from the storage

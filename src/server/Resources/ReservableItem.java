@@ -4,6 +4,11 @@
 // -------------------------------
 package server.Resources;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
 
 // Superclass for the three reservable items, Flight, Car, and Hotel
@@ -59,4 +64,19 @@ public abstract class ReservableItem extends RMItem implements Serializable {
 
   public abstract String getKey();
 
+  public ReservableItem deepClone() {
+	try {
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		ObjectOutputStream oos = new ObjectOutputStream(baos);
+		oos.writeObject(this);
+
+		ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
+		ObjectInputStream ois = new ObjectInputStream(bais);
+		return (ReservableItem) ois.readObject();
+	} catch (IOException e) {
+		return null;
+	} catch (ClassNotFoundException e) {
+		return null;
+	}
+  }
 }
