@@ -38,6 +38,7 @@ public class HotelManager extends ResourceManager implements IHotelManager {
   }
 
   public HotelManager() throws RemoteException {
+    super("PG12HotelRM");
   }
 
   /**

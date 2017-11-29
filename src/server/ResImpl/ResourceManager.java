@@ -6,6 +6,14 @@ package server.ResImpl;
 
 import LockManager.DeadlockException;
 import LockManager.LockManager;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.rmi.RemoteException;
 import java.util.Calendar;
 import java.util.Enumeration;
@@ -29,11 +37,17 @@ public abstract class ResourceManager implements IResourceManager {
   private LockManager lm = new LockManager();
 
   int port;
+  private String name;
 
   private AtomicInteger txnCounter = new AtomicInteger(0);
 
 
-  public ResourceManager() throws RemoteException {
+  public ResourceManager(String name) throws RemoteException {
+    this.name = name;
+    if (restore())
+      Trace.info(name + " restored from disk");
+    else
+      this.m_itemHT.version = 0;
   }
 
   void parseArgs(String args[]) throws IllegalArgumentException {
@@ -88,6 +102,12 @@ public abstract class ResourceManager implements IResourceManager {
 
     // TxnWrites.remove(txnID);
     TxnDeletes.remove(txnID);
+
+    try {
+      save();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
 
     lm.UnlockAll(txnID);
     return true;
@@ -402,5 +422,84 @@ public abstract class ResourceManager implements IResourceManager {
       Trace.info("RM::deleteCustomer(" + id + ", " + customerID + ") succeeded");
       return true;
     } // if
+  }
+
+  /**
+   * Persistence
+   *
+   * Persitence is maintained by writing RM hashtables (HT) to disk.
+   * These HTs are maintained in the [RM_name]_0.ser and [RM_name]_1.ser files.
+   *
+   * These HTs contain version numbers that identify the most up to date record.
+   * Every time a record is saved, it's version is incremented.
+   *
+   * On RM start, it checks for any existing records and uses the one with the largest version
+   * number as the master record.
+   */
+
+  /**
+   * writes the current HashMap to disk.
+   */
+  public void save() throws IOException {
+    // Even versions are saved to record 0
+    // Odd versions are saved to record 1
+    int id = 0;
+    if (m_itemHT.version % 2 != 0)
+      id = 1;
+
+    // increment the version
+    m_itemHT.version++;
+
+    String fname = String.format("%s_%d.ser", this.name, id);
+    FileOutputStream fos = new FileOutputStream(fname);
+    ObjectOutputStream oos = new ObjectOutputStream(fos);
+    oos.writeObject(m_itemHT);
+    oos.close();
+  }
+
+  /**
+   * reads HashMap from file.
+   *
+   * @return success
+   */
+  public boolean restore() {
+    String fname1 = String.format("%s_0.ser", this.name);
+
+    // Check that the first file exists, otherwise unable to restore
+    File f = new File(fname1);
+    if (!f.exists())
+      return false;
+
+    try {
+      FileInputStream fis = new FileInputStream(fname1);
+      ObjectInputStream ois = new ObjectInputStream(fis);
+      RMHashtable ht1 = (RMHashtable) ois.readObject();
+
+      // If a second record exists, we must check which is master
+      String fname2 = String.format("%s_1.ser", this.name);
+      f = new File(fname2);
+      if (f.exists()) {
+        fis = new FileInputStream(fname2);
+        ois = new ObjectInputStream(fis);
+        RMHashtable ht2 = (RMHashtable) ois.readObject();
+
+        // The record with the most recent version becomes the master record
+        if (ht1.version > ht2.version)
+          this.m_itemHT = ht1;
+        else
+          this.m_itemHT = ht2;
+      } else {
+        // If there's only one record, it is the master record
+        this.m_itemHT = ht1;
+      }
+
+    } catch (Exception e) {
+      // We should never get here because we checked file existed earlier
+      Trace.error("Restore file not found");
+      e.printStackTrace();
+      System.exit(-1);
+    }
+
+    return true;
   }
 }

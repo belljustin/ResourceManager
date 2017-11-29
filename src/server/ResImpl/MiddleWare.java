@@ -66,6 +66,7 @@ public class MiddleWare extends ResourceManager implements IMiddleWare {
   }
 
   public MiddleWare() throws RemoteException {
+    super("PG12MiddleWare");
   }
 
   private void connectRM()

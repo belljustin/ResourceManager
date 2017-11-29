@@ -16,6 +16,8 @@ public class RMHashtable extends Hashtable {
     super();
   }
 
+  public int version;
+
   public String toString() {
     String s = "--- BEGIN RMHashtable ---\n";
     Object key = null;
