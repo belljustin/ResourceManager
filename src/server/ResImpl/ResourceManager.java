@@ -8,10 +8,8 @@ import LockManager.DeadlockException;
 import LockManager.LockManager;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.ObjectInput;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.rmi.RemoteException;
@@ -45,14 +43,14 @@ public abstract class ResourceManager implements IResourceManager {
   public ResourceManager(String name) throws RemoteException {
     this.name = name;
     try {
-		if (restore()) {
-		  Trace.info(name + " restored from disk");
-		} else {
-		  writeHT(this.txnCounter.getAndIncrement(), this.m_itemHT);
-		  this.m_itemHT.version = 0;
-		}
+      if (restore()) {
+        Trace.info(name + " restored from disk");
+      } else {
+        writeHT(this.txnCounter.getAndIncrement(), this.m_itemHT);
+        this.m_itemHT.version = 0;
+      }
     } catch (IOException e) {
-    	Trace.error("Could not read from disk");
+      Trace.error("Could not read from disk");
     }
   }
 
@@ -92,17 +90,17 @@ public abstract class ResourceManager implements IResourceManager {
   public boolean commit(int txnID)
       throws InvalidTransactionException, RemoteException {
     synchronized (m_itemHT) {
-    	try {
-			updateHT();
-			lm.UnlockAll(txnID);
-			return true;
-    	} catch (IOException e) { 
-    		Trace.error("Could not read/write file");
-    	}
+      try {
+        updateHT();
+        lm.UnlockAll(txnID);
+        return true;
+      } catch (IOException e) {
+        Trace.error("Could not read/write file");
+      }
     }
-	return false;
+    return false;
   }
-  
+
   /**
    * Abort a transaction given its Id.
    */
@@ -134,8 +132,9 @@ public abstract class ResourceManager implements IResourceManager {
     // Check if we've already written this value in the current transaction
     RMHashtable writes = TxnWrites.get(txnId);
     synchronized (writes) {
-      if (writes.containsKey(key))
+      if (writes.containsKey(key)) {
         return (RMItem) writes.get(key);
+      }
     }
 
     // Otherwise, grab it from the official hashtable
@@ -272,7 +271,7 @@ public abstract class ResourceManager implements IResourceManager {
           + ") failed--No more items");
       return false;
     } else {
-    
+
       Customer custCopy = cust.deepClone();
       custCopy.reserve(key, location, item.getPrice());
       writeData(id, custCopy.getKey(), custCopy);
@@ -397,9 +396,10 @@ public abstract class ResourceManager implements IResourceManager {
 
         ReservableItem item = (ReservableItem) readData(id, reserveditem.getKey());
         ReservableItem itemCopy = item.deepClone();
-        
+
         Trace.info("RM::deleteCustomer(" + id + ", " + customerID + ") has reserved " + reserveditem
-            .getKey() + "which is reserved" + itemCopy.getReserved() + " times and is still available "
+            .getKey() + "which is reserved" + itemCopy.getReserved()
+            + " times and is still available "
             + itemCopy.getCount() + " times");
         itemCopy.setReserved(itemCopy.getReserved() - reserveditem.getCount());
         itemCopy.setCount(itemCopy.getCount() + reserveditem.getCount());
@@ -440,129 +440,127 @@ public abstract class ResourceManager implements IResourceManager {
     File fA = new File(fnameA);
     File fB = new File(fnameB);
     if (fA.exists() && fB.exists()) {
-    	RMHashtable htA = readHT(fnameA);
-    	RMHashtable htB = readHT(fnameB);
-    	
-    	if (htA.version < htB.version) {
-    		this.m_itemHT = htA;
-    	} else {
-    		this.m_itemHT = htB;
-    	}
+      RMHashtable htA = readHT(fnameA);
+      RMHashtable htB = readHT(fnameB);
+
+      if (htA.version < htB.version) {
+        this.m_itemHT = htA;
+      } else {
+        this.m_itemHT = htB;
+      }
     } else if (fA.exists()) {
-    	RMHashtable htA = readHT(fnameA);
-		this.m_itemHT = htA;
+      RMHashtable htA = readHT(fnameA);
+      this.m_itemHT = htA;
     } else if (fB.exists()) {
-    	RMHashtable htB = readHT(fnameB);
-		this.m_itemHT = htB;
+      RMHashtable htB = readHT(fnameB);
+      this.m_itemHT = htB;
     } else {
-    	return false;
+      return false;
     }
-    
+
     this.txnCounter.set(this.m_itemHT.version);
     return true;
   }
-  
+
   public boolean updateHT() throws IOException {
-	String fnameA = String.format("%s_A.ser", this.name);
-	String fnameB = String.format("%s_B.ser", this.name);
+    String fnameA = String.format("%s_A.ser", this.name);
+    String fnameB = String.format("%s_B.ser", this.name);
 
-	// Check that the first file exists, otherwise unable to restore
-	File fA = new File(fnameA);
-	File fB = new File(fnameB);
-	if (fA.exists() && fB.exists()) {
-		RMHashtable htA = readHT(fnameA);
-		RMHashtable htB = readHT(fnameB);
+    // Check that the first file exists, otherwise unable to restore
+    File fA = new File(fnameA);
+    File fB = new File(fnameB);
+    if (fA.exists() && fB.exists()) {
+      RMHashtable htA = readHT(fnameA);
+      RMHashtable htB = readHT(fnameB);
 
-		if (htA.version > htB.version) {
-			this.m_itemHT = htA;
-			fB.delete();
-		} else {
-			this.m_itemHT = htB;
-			fA.delete();
-		}
-	} else {
-		Trace.error("Both files should exist!");
-		System.exit(-1);
-	}
-
-	return true;
-  }
-  
-  public RMHashtable readHT(String fname) throws IOException {
-      FileInputStream fis = new FileInputStream(fname);
-      ObjectInputStream ois = new ObjectInputStream(fis);
-      try {
-		  RMHashtable ht = (RMHashtable) ois.readObject();
-		  return ht;
-      } catch (ClassNotFoundException e) {
-    	  Trace.error("Should never get here because we only save HTs to this file");
-    	  System.exit(-1);
+      if (htA.version > htB.version) {
+        this.m_itemHT = htA;
+        fB.delete();
+      } else {
+        this.m_itemHT = htB;
+        fA.delete();
       }
-      return null;
+    } else {
+      Trace.error("Both files should exist!");
+      System.exit(-1);
+    }
+
+    return true;
   }
-  
+
+  public RMHashtable readHT(String fname) throws IOException {
+    FileInputStream fis = new FileInputStream(fname);
+    ObjectInputStream ois = new ObjectInputStream(fis);
+    try {
+      RMHashtable ht = (RMHashtable) ois.readObject();
+      return ht;
+    } catch (ClassNotFoundException e) {
+      Trace.error("Should never get here because we only save HTs to this file");
+      System.exit(-1);
+    }
+    return null;
+  }
+
   /**
    * 2 Phase commit
    */
 
   /**
-   * Tries to commit and save the transaction to disk 
-   * 
-   * @param txnID
+   * Tries to commit and save the transaction to disk
+   *
    * @return commit
-   * @throws RemoteException
-   * @throws InvalidTransactionException
    */
   public boolean voteReply(int txnID) throws RemoteException {
-	RMHashtable shadow = m_itemHT.deepCopy();
-	shadow.version = txnID;
+    RMHashtable shadow = m_itemHT.deepCopy();
+    shadow.version = txnID;
 
-	// Add all the writes from txn write set to shadow HT
-	RMHashtable writes = TxnWrites.get(txnID);
-	Set<String> keys = writes.keySet();
-	for (String key : keys) {
-	  Trace.info("Adding " + key + " " + writes.get(key));
-	  shadow.put(key, writes.get(key));
-	}
+    // Add all the writes from txn write set to shadow HT
+    RMHashtable writes = TxnWrites.get(txnID);
+    Set<String> keys = writes.keySet();
+    for (String key : keys) {
+      Trace.info("Adding " + key + " " + writes.get(key));
+      shadow.put(key, writes.get(key));
+    }
 
-	// Delete all the deletes from txn delete set from official HT
-	HashSet<String> deletes = TxnDeletes.get(txnID);
-	for (String key : deletes) {
-	  shadow.remove(key);
-	}
+    // Delete all the deletes from txn delete set from official HT
+    HashSet<String> deletes = TxnDeletes.get(txnID);
+    for (String key : deletes) {
+      shadow.remove(key);
+    }
 
     // TxnWrites.remove(txnID);
     TxnDeletes.remove(txnID);
-	
+
     return writeHT(txnID, shadow);
   }
-  
+
   public boolean writeHT(int txnID, RMHashtable ht) {
     char version = 'A';
-    if (txnID % 2 != 0)
-    	version = 'B';
+    if (txnID % 2 != 0) {
+      version = 'B';
+    }
     ht.version = txnID;
 
     String fname = String.format("%s_%c.ser", this.name, version);
     Trace.info("Creating " + fname);
     Trace.info(ht.toString());
     try {
-		FileOutputStream fos = new FileOutputStream(fname);
-		ObjectOutputStream oos = new ObjectOutputStream(fos);
-		oos.writeObject(ht);
-		oos.close();
+      FileOutputStream fos = new FileOutputStream(fname);
+      ObjectOutputStream oos = new ObjectOutputStream(fos);
+      oos.writeObject(ht);
+      oos.close();
     } catch (IOException e) {
-    	Trace.error("Can't save to disk");
-    	return false;
+      Trace.error("Can't save to disk");
+      return false;
     }
 
-	return true;
-	  
+    return true;
+
   }
-  
+
   public boolean rollback(int txnId) throws IOException {
-	  restore();
-	  lm.UnlockAll(txnId);
-	  return true;
+    restore();
+    lm.UnlockAll(txnId);
+    return true;
   }
 }

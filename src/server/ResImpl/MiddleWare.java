@@ -1,8 +1,6 @@
 package server.ResImpl;
 
 import LockManager.DeadlockException;
-
-import java.io.IOException;
 import java.rmi.NotBoundException;
 import java.rmi.RMISecurityManager;
 import java.rmi.RemoteException;
@@ -416,96 +414,95 @@ public class MiddleWare extends ResourceManager implements IMiddleWare {
     UnicastRemoteObject.unexportObject(mwStub, true);
     return true;
   }
-  
+
   /**
    * 2 Phase commit
- * @throws RemoteException 
    */
   public boolean voteRequest(int txnID) throws RemoteException {
-	  try {
-		  this.voteReply(txnID);
-	  } catch (Exception e) {
-		  e.printStackTrace();
-		  Trace.info("Middleware failed");
-		  return false;
-	  }
-	  
-	  try {
-		  carRM.voteReply(txnID);
-	  } catch (Exception e) {
-		 try {
-			 this.rollback(txnID);
-		 } catch (Exception e1) {
-			 Trace.info("Middleware Failure");
-		 }
-		 return false;
-	  }
-	  
-	  try {
-		  flightRM.voteReply(txnID);
-	  } catch (Exception e) {
-		 try {
-			 this.rollback(txnID);
-		 } catch (Exception e1) {
-			 Trace.info("Middleware Failure");
-		 }
-		 
-		 try {
-			 carRM.rollback(txnID);
-		 } catch (Exception e1) {
-			 Trace.info("Car Failure");
-		 }
-		 return false;
-	  }
-	  
-	  try {
-		  hotelRM.voteReply(txnID);
-	  } catch (Exception e) {
-		 try {
-			 this.rollback(txnID);
-		 } catch (Exception e1) {
-			 Trace.info("Middleware Failure");
-		 }
-		 
-		 try {
-			 carRM.rollback(txnID);
-		 } catch (Exception e1) {
-			 Trace.info("Car Failure");
-		 }
+    try {
+      this.voteReply(txnID);
+    } catch (Exception e) {
+      e.printStackTrace();
+      Trace.info("Middleware failed");
+      return false;
+    }
 
-		 try {
-			 flightRM.rollback(txnID);
-		 } catch (Exception e1) {
-			 Trace.info("Flight Failure");
-		 }
+    try {
+      carRM.voteReply(txnID);
+    } catch (Exception e) {
+      try {
+        this.rollback(txnID);
+      } catch (Exception e1) {
+        Trace.info("Middleware Failure");
+      }
+      return false;
+    }
 
-		 return false;
-	  }
-	  
-	try {
-		super.commit(txnID);
-	} catch (Exception e) {
-		Trace.info("Middleware Failure");
-	}
+    try {
+      flightRM.voteReply(txnID);
+    } catch (Exception e) {
+      try {
+        this.rollback(txnID);
+      } catch (Exception e1) {
+        Trace.info("Middleware Failure");
+      }
 
-	try {
-		carRM.commit(txnID);
-	} catch (Exception e) {
-		Trace.info("Car Failure");
-	}
+      try {
+        carRM.rollback(txnID);
+      } catch (Exception e1) {
+        Trace.info("Car Failure");
+      }
+      return false;
+    }
 
-	try {
-		flightRM.commit(txnID);
-	} catch (Exception e) {
-		Trace.info("Flight Failure");
-	}
+    try {
+      hotelRM.voteReply(txnID);
+    } catch (Exception e) {
+      try {
+        this.rollback(txnID);
+      } catch (Exception e1) {
+        Trace.info("Middleware Failure");
+      }
 
-	try {
-		hotelRM.commit(txnID);
-	} catch (Exception e) {
-		Trace.info("Htoel Failure");
-	}
-	
-	return true;
+      try {
+        carRM.rollback(txnID);
+      } catch (Exception e1) {
+        Trace.info("Car Failure");
+      }
+
+      try {
+        flightRM.rollback(txnID);
+      } catch (Exception e1) {
+        Trace.info("Flight Failure");
+      }
+
+      return false;
+    }
+
+    try {
+      super.commit(txnID);
+    } catch (Exception e) {
+      Trace.info("Middleware Failure");
+    }
+
+    try {
+      carRM.commit(txnID);
+    } catch (Exception e) {
+      Trace.info("Car Failure");
+    }
+
+    try {
+      flightRM.commit(txnID);
+    } catch (Exception e) {
+      Trace.info("Flight Failure");
+    }
+
+    try {
+      hotelRM.commit(txnID);
+    } catch (Exception e) {
+      Trace.info("Htoel Failure");
+    }
+
+    return true;
   }
 }
