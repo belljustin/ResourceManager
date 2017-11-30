@@ -44,10 +44,16 @@ public abstract class ResourceManager implements IResourceManager {
 
   public ResourceManager(String name) throws RemoteException {
     this.name = name;
-    if (restore())
-      Trace.info(name + " restored from disk");
-    else
-      this.m_itemHT.version = 0;
+    try {
+		if (restore()) {
+		  Trace.info(name + " restored from disk");
+		} else {
+		  writeHT(this.txnCounter.getAndIncrement(), this.m_itemHT);
+		  this.m_itemHT.version = 0;
+		}
+    } catch (IOException e) {
+    	Trace.error("Could not read from disk");
+    }
   }
 
   void parseArgs(String args[]) throws IllegalArgumentException {
@@ -86,33 +92,17 @@ public abstract class ResourceManager implements IResourceManager {
   public boolean commit(int txnID)
       throws InvalidTransactionException, RemoteException {
     synchronized (m_itemHT) {
-      // Add all the writes from txn write set to offical HT
-      RMHashtable writes = TxnWrites.get(txnID);
-      Set<String> keys = writes.keySet();
-      for (String key : keys) {
-        m_itemHT.put(key, writes.get(key));
-      }
-
-      // Delete all the deletes from txn delete set from official HT
-      HashSet<String> deletes = TxnDeletes.get(txnID);
-      for (String key : deletes) {
-        m_itemHT.remove(key);
-      }
+    	try {
+			updateHT();
+			lm.UnlockAll(txnID);
+			return true;
+    	} catch (IOException e) { 
+    		Trace.error("Could not read/write file");
+    	}
     }
-
-    // TxnWrites.remove(txnID);
-    TxnDeletes.remove(txnID);
-
-    try {
-      save();
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
-
-    lm.UnlockAll(txnID);
-    return true;
+	return false;
   }
-
+  
   /**
    * Abort a transaction given its Id.
    */
@@ -438,68 +428,141 @@ public abstract class ResourceManager implements IResourceManager {
    */
 
   /**
-   * writes the current HashMap to disk.
-   */
-  public void save() throws IOException {
-    // Even versions are saved to record 0
-    // Odd versions are saved to record 1
-    int id = 0;
-    if (m_itemHT.version % 2 != 0)
-      id = 1;
-
-    // increment the version
-    m_itemHT.version++;
-
-    String fname = String.format("%s_%d.ser", this.name, id);
-    FileOutputStream fos = new FileOutputStream(fname);
-    ObjectOutputStream oos = new ObjectOutputStream(fos);
-    oos.writeObject(m_itemHT);
-    oos.close();
-  }
-
-  /**
    * reads HashMap from file.
    *
    * @return success
    */
-  public boolean restore() {
-    String fname1 = String.format("%s_0.ser", this.name);
+  public boolean restore() throws IOException {
+    String fnameA = String.format("%s_A.ser", this.name);
+    String fnameB = String.format("%s_B.ser", this.name);
 
     // Check that the first file exists, otherwise unable to restore
-    File f = new File(fname1);
-    if (!f.exists())
-      return false;
+    File fA = new File(fnameA);
+    File fB = new File(fnameB);
+    if (fA.exists() && fB.exists()) {
+    	RMHashtable htA = readHT(fnameA);
+    	RMHashtable htB = readHT(fnameB);
+    	
+    	if (htA.version < htB.version) {
+    		this.m_itemHT = htA;
+    	} else {
+    		this.m_itemHT = htB;
+    	}
+    } else if (fA.exists()) {
+    	RMHashtable htA = readHT(fnameA);
+		this.m_itemHT = htA;
+    } else if (fB.exists()) {
+    	RMHashtable htB = readHT(fnameB);
+		this.m_itemHT = htB;
+    } else {
+    	return false;
+    }
+    
+    this.txnCounter.set(this.m_itemHT.version);
+    return true;
+  }
+  
+  public boolean updateHT() throws IOException {
+	String fnameA = String.format("%s_A.ser", this.name);
+	String fnameB = String.format("%s_B.ser", this.name);
 
-    try {
-      FileInputStream fis = new FileInputStream(fname1);
+	// Check that the first file exists, otherwise unable to restore
+	File fA = new File(fnameA);
+	File fB = new File(fnameB);
+	if (fA.exists() && fB.exists()) {
+		RMHashtable htA = readHT(fnameA);
+		RMHashtable htB = readHT(fnameB);
+
+		if (htA.version > htB.version) {
+			this.m_itemHT = htA;
+			fB.delete();
+		} else {
+			this.m_itemHT = htB;
+			fA.delete();
+		}
+	} else {
+		Trace.error("Both files should exist!");
+		System.exit(-1);
+	}
+
+	return true;
+  }
+  
+  public RMHashtable readHT(String fname) throws IOException {
+      FileInputStream fis = new FileInputStream(fname);
       ObjectInputStream ois = new ObjectInputStream(fis);
-      RMHashtable ht1 = (RMHashtable) ois.readObject();
-
-      // If a second record exists, we must check which is master
-      String fname2 = String.format("%s_1.ser", this.name);
-      f = new File(fname2);
-      if (f.exists()) {
-        fis = new FileInputStream(fname2);
-        ois = new ObjectInputStream(fis);
-        RMHashtable ht2 = (RMHashtable) ois.readObject();
-
-        // The record with the most recent version becomes the master record
-        if (ht1.version > ht2.version)
-          this.m_itemHT = ht1;
-        else
-          this.m_itemHT = ht2;
-      } else {
-        // If there's only one record, it is the master record
-        this.m_itemHT = ht1;
+      try {
+		  RMHashtable ht = (RMHashtable) ois.readObject();
+		  return ht;
+      } catch (ClassNotFoundException e) {
+    	  Trace.error("Should never get here because we only save HTs to this file");
+    	  System.exit(-1);
       }
+      return null;
+  }
+  
+  /**
+   * 2 Phase commit
+   */
 
-    } catch (Exception e) {
-      // We should never get here because we checked file existed earlier
-      Trace.error("Restore file not found");
-      e.printStackTrace();
-      System.exit(-1);
+  /**
+   * Tries to commit and save the transaction to disk 
+   * 
+   * @param txnID
+   * @return commit
+   * @throws RemoteException
+   * @throws InvalidTransactionException
+   */
+  public boolean voteReply(int txnID) throws RemoteException {
+	RMHashtable shadow = m_itemHT.deepCopy();
+	shadow.version = txnID;
+
+	// Add all the writes from txn write set to shadow HT
+	RMHashtable writes = TxnWrites.get(txnID);
+	Set<String> keys = writes.keySet();
+	for (String key : keys) {
+	  Trace.info("Adding " + key + " " + writes.get(key));
+	  shadow.put(key, writes.get(key));
+	}
+
+	// Delete all the deletes from txn delete set from official HT
+	HashSet<String> deletes = TxnDeletes.get(txnID);
+	for (String key : deletes) {
+	  shadow.remove(key);
+	}
+
+    // TxnWrites.remove(txnID);
+    TxnDeletes.remove(txnID);
+	
+    return writeHT(txnID, shadow);
+  }
+  
+  public boolean writeHT(int txnID, RMHashtable ht) {
+    char version = 'A';
+    if (txnID % 2 != 0)
+    	version = 'B';
+    ht.version = txnID;
+
+    String fname = String.format("%s_%c.ser", this.name, version);
+    Trace.info("Creating " + fname);
+    Trace.info(ht.toString());
+    try {
+		FileOutputStream fos = new FileOutputStream(fname);
+		ObjectOutputStream oos = new ObjectOutputStream(fos);
+		oos.writeObject(ht);
+		oos.close();
+    } catch (IOException e) {
+    	Trace.error("Can't save to disk");
+    	return false;
     }
 
-    return true;
+	return true;
+	  
+  }
+  
+  public boolean rollback(int txnId) throws IOException {
+	  restore();
+	  lm.UnlockAll(txnId);
+	  return true;
   }
 }

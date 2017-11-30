@@ -23,7 +23,7 @@ public class RMHashtable extends Hashtable {
     Object key = null;
     for (Enumeration e = keys(); e.hasMoreElements(); ) {
       key = e.nextElement();
-      String value = (String) get(key);
+      String value = get(key).toString();
       s = s + "[KEY='" + key + "']" + value + "\n";
     }
     s = s + "--- END RMHashtable ---";

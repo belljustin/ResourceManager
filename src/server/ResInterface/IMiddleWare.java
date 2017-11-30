@@ -11,4 +11,6 @@ public interface IMiddleWare extends IFlightManager, ICarManager, IHotelManager 
   public boolean itinerary(int id, int customer, Vector<String> flightNumbers, String location,
       boolean Car, boolean Room)
       throws RemoteException, DeadlockException;
+  
+  public boolean voteRequest(int txnID) throws RemoteException;
 }

@@ -2,6 +2,8 @@ package server.ResInterface;
 
 
 import LockManager.DeadlockException;
+
+import java.io.IOException;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 import server.ResImpl.InvalidTransactionException;
@@ -33,4 +35,8 @@ public interface IResourceManager extends Remote {
   public void abort(int txnID) throws RemoteException, InvalidTransactionException;
 
   public boolean shutdown() throws RemoteException;
+  
+  public boolean voteReply(int txnID) throws RemoteException;
+  
+  public boolean rollback(int txnID) throws IOException;
 }
