@@ -4,6 +4,7 @@ package server.ResInterface;
 import LockManager.DeadlockException;
 import java.rmi.RemoteException;
 import java.util.Vector;
+import server.ResImpl.InvalidTransactionException;
 
 public interface IMiddleWare extends IFlightManager, ICarManager, IHotelManager {
 
@@ -13,4 +14,6 @@ public interface IMiddleWare extends IFlightManager, ICarManager, IHotelManager 
       throws RemoteException, DeadlockException;
 
   public boolean voteRequest(int txnID) throws RemoteException;
+
+  public boolean commit(int txnId) throws RemoteException, InvalidTransactionException;
 }

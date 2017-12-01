@@ -29,13 +29,11 @@ public interface IResourceManager extends Remote {
 
   public int start() throws RemoteException;
 
-  public boolean commit(int txnId) throws RemoteException, InvalidTransactionException;
-
   public void abort(int txnID) throws RemoteException, InvalidTransactionException;
 
   public boolean shutdown() throws RemoteException;
 
-  public boolean voteReply(int txnID) throws RemoteException;
+  public void voteReply(int txnID) throws RemoteException;
 
-  public boolean rollback(int txnID) throws IOException;
+  public void recvDecision(int txnID, boolean commit) throws RemoteException;
 }

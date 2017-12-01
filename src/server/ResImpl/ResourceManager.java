@@ -6,12 +6,6 @@ package server.ResImpl;
 
 import LockManager.DeadlockException;
 import LockManager.LockManager;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.rmi.RemoteException;
 import java.util.Calendar;
 import java.util.Enumeration;
@@ -37,21 +31,18 @@ public abstract class ResourceManager implements IResourceManager {
   int port;
   private String name;
 
-  private AtomicInteger txnCounter = new AtomicInteger(0);
+  private AtomicInteger txnCounter = new AtomicInteger(1);
 
 
   public ResourceManager(String name) throws RemoteException {
     this.name = name;
-    try {
-      if (restore()) {
-        Trace.info(name + " restored from disk");
-      } else {
-        writeHT(this.txnCounter.getAndIncrement(), this.m_itemHT);
-        this.m_itemHT.version = 0;
-      }
-    } catch (IOException e) {
-      Trace.error("Could not read from disk");
+
+    // Restore hashtable from disk if available
+    RMHashtable restoredHT = DiskManager.restore(name);
+    if (restoredHT != null) {
+      m_itemHT = restoredHT;
     }
+    DiskManager.writeHT(name + "_A.ser", m_itemHT);
   }
 
   void parseArgs(String args[]) throws IllegalArgumentException {
@@ -59,57 +50,6 @@ public abstract class ResourceManager implements IResourceManager {
     if (args.length > 0) {
       port = Integer.parseInt(args[0]);
     }
-  }
-
-  /**
-   * Starts a new transaction with the given Id.
-   *
-   * @return txnId
-   */
-  public int start(int txnId) throws RemoteException {
-    // Create an empty write set for this txn
-    TxnWrites.put(txnId, new RMHashtable());
-    TxnDeletes.put(txnId, new HashSet<String>());
-    return txnId;
-  }
-
-  /**
-   * Starts a new transaction.
-   *
-   * @return txnId
-   */
-  public int start() throws RemoteException {
-    return start(this.txnCounter.getAndIncrement());
-  }
-
-  /**
-   * Commits a transaction given its Id.
-   *
-   * @return success
-   */
-  public boolean commit(int txnID)
-      throws InvalidTransactionException, RemoteException {
-    synchronized (m_itemHT) {
-      try {
-        updateHT();
-        lm.UnlockAll(txnID);
-        return true;
-      } catch (IOException e) {
-        Trace.error("Could not read/write file");
-      }
-    }
-    return false;
-  }
-
-  /**
-   * Abort a transaction given its Id.
-   */
-  public void abort(int txnID)
-      throws InvalidTransactionException, RemoteException {
-    // TxnWrites.remove(txnID);
-    TxnDeletes.remove(txnID);
-
-    lm.UnlockAll(txnID);
   }
 
 
@@ -415,152 +355,93 @@ public abstract class ResourceManager implements IResourceManager {
   }
 
   /**
-   * Persistence
+   * Starts a new transaction with the given Id.
    *
-   * Persitence is maintained by writing RM hashtables (HT) to disk.
-   * These HTs are maintained in the [RM_name]_0.ser and [RM_name]_1.ser files.
-   *
-   * These HTs contain version numbers that identify the most up to date record.
-   * Every time a record is saved, it's version is incremented.
-   *
-   * On RM start, it checks for any existing records and uses the one with the largest version
-   * number as the master record.
+   * @return txnId
    */
-
-  /**
-   * reads HashMap from file.
-   *
-   * @return success
-   */
-  public boolean restore() throws IOException {
-    String fnameA = String.format("%s_A.ser", this.name);
-    String fnameB = String.format("%s_B.ser", this.name);
-
-    // Check that the first file exists, otherwise unable to restore
-    File fA = new File(fnameA);
-    File fB = new File(fnameB);
-    if (fA.exists() && fB.exists()) {
-      RMHashtable htA = readHT(fnameA);
-      RMHashtable htB = readHT(fnameB);
-
-      if (htA.version < htB.version) {
-        this.m_itemHT = htA;
-      } else {
-        this.m_itemHT = htB;
-      }
-    } else if (fA.exists()) {
-      RMHashtable htA = readHT(fnameA);
-      this.m_itemHT = htA;
-    } else if (fB.exists()) {
-      RMHashtable htB = readHT(fnameB);
-      this.m_itemHT = htB;
-    } else {
-      return false;
-    }
-
-    this.txnCounter.set(this.m_itemHT.version);
-    return true;
-  }
-
-  public boolean updateHT() throws IOException {
-    String fnameA = String.format("%s_A.ser", this.name);
-    String fnameB = String.format("%s_B.ser", this.name);
-
-    // Check that the first file exists, otherwise unable to restore
-    File fA = new File(fnameA);
-    File fB = new File(fnameB);
-    if (fA.exists() && fB.exists()) {
-      RMHashtable htA = readHT(fnameA);
-      RMHashtable htB = readHT(fnameB);
-
-      if (htA.version > htB.version) {
-        this.m_itemHT = htA;
-        fB.delete();
-      } else {
-        this.m_itemHT = htB;
-        fA.delete();
-      }
-    } else {
-      Trace.error("Both files should exist!");
-      System.exit(-1);
-    }
-
-    return true;
-  }
-
-  public RMHashtable readHT(String fname) throws IOException {
-    FileInputStream fis = new FileInputStream(fname);
-    ObjectInputStream ois = new ObjectInputStream(fis);
-    try {
-      RMHashtable ht = (RMHashtable) ois.readObject();
-      return ht;
-    } catch (ClassNotFoundException e) {
-      Trace.error("Should never get here because we only save HTs to this file");
-      System.exit(-1);
-    }
-    return null;
+  public int start(int txnId) throws RemoteException {
+    // Create an empty write set for this txn
+    TxnWrites.put(txnId, new RMHashtable());
+    TxnDeletes.put(txnId, new HashSet<String>());
+    return txnId;
   }
 
   /**
-   * 2 Phase commit
+   * Starts a new transaction.
+   *
+   * @return txnId
    */
+  public int start() throws RemoteException {
+    return start(txnCounter.getAndIncrement());
+  }
 
   /**
-   * Tries to commit and save the transaction to disk
-   *
-   * @return commit
+   * Abort a transaction given its Id.
    */
-  public boolean voteReply(int txnID) throws RemoteException {
-    RMHashtable shadow = m_itemHT.deepCopy();
-    shadow.version = txnID;
+  public void abort(int txnID)
+      throws InvalidTransactionException, RemoteException {
+    TxnDeletes.remove(txnID);
+    lm.UnlockAll(txnID);
+  }
+
+  /**
+   * Returns a newly created hashtable with all the txn write & delete sets applied.
+   *
+   * @param txnID
+   * @return new hashtable with applied write set
+   */
+  public RMHashtable applyWrites(int txnID) {
+    RMHashtable copyHt = m_itemHT.deepCopy();
 
     // Add all the writes from txn write set to shadow HT
     RMHashtable writes = TxnWrites.get(txnID);
     Set<String> keys = writes.keySet();
-    for (String key : keys) {
-      Trace.info("Adding " + key + " " + writes.get(key));
-      shadow.put(key, writes.get(key));
-    }
+    for (String key : keys)
+      copyHt.put(key, writes.get(key));
 
     // Delete all the deletes from txn delete set from official HT
     HashSet<String> deletes = TxnDeletes.get(txnID);
-    for (String key : deletes) {
-      shadow.remove(key);
-    }
+    for (String key : deletes)
+      copyHt.remove(key);
 
-    // TxnWrites.remove(txnID);
-    TxnDeletes.remove(txnID);
-
-    return writeHT(txnID, shadow);
+    return copyHt;
   }
 
-  public boolean writeHT(int txnID, RMHashtable ht) {
-    char version = 'A';
-    if (txnID % 2 != 0) {
-      version = 'B';
-    }
-    ht.version = txnID;
+  /**
+   * Create a Write Ahead Log from the write set of the given transaction and write it to disk.
+   *
+   * @param txnID transaction on which to reply vote on
+   */
+  public void voteReply(int txnID) throws RemoteException {
+    RMHashtable wal = applyWrites(txnID);
+    DiskManager.writeWAL(name, wal);
+  }
 
-    String fname = String.format("%s_%c.ser", this.name, version);
-    Trace.info("Creating " + fname);
-    Trace.info(ht.toString());
+  /**
+   * Receives decision for a transaction.
+   *
+   * If the decision is to commit, we load the Write Ahead Log (WAL) from disk into memory,
+   * upgrade the WAL to primary log, and delete the old log.
+   *
+   * If the decision is to abort, we delete the WAL.
+   *
+   * Either way, we release all the locks associated with the related transaction.
+   *
+   * @param txnID transaction identifier
+   * @param commit whether or not to commit
+   */
+  public void recvDecision(int txnID, boolean commit) throws RemoteException {
     try {
-      FileOutputStream fos = new FileOutputStream(fname);
-      ObjectOutputStream oos = new ObjectOutputStream(fos);
-      oos.writeObject(ht);
-      oos.close();
-    } catch (IOException e) {
-      Trace.error("Can't save to disk");
-      return false;
+      if (commit)
+        m_itemHT = DiskManager.getWalAndDelete(name);
+      else
+        DiskManager.deleteWAL(name);
+
+      lm.UnlockAll(txnID);
+    } catch (WalDoesNotExistException e) {
+      String action = commit ? "commit" : "abort";
+      String warning = String.format("%s has already received the decision to %s", name, action);
+      Trace.warn(warning);
     }
-
-    return true;
-
-  }
-
-  public boolean rollback(int txnId) throws IOException {
-    restore();
-    lm.UnlockAll(txnId);
-    return true;
   }
 }

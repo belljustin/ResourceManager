@@ -1,6 +1,7 @@
 package server.ResImpl;
 
 import LockManager.DeadlockException;
+import java.io.FileNotFoundException;
 import java.rmi.NotBoundException;
 import java.rmi.RMISecurityManager;
 import java.rmi.RemoteException;
@@ -67,6 +68,17 @@ public class MiddleWare extends ResourceManager implements IMiddleWare {
 
   public MiddleWare() throws RemoteException {
     super("PG12MiddleWare");
+
+    // Check if there were any ongoing decisions that still need to be broadcasted
+    try {
+      int txnID = DiskManager.readDecision();
+      if (txnID < 0)
+        sendDecision(-txnID, false);
+      else
+        sendDecision(txnID, true);
+    } catch (FileNotFoundException e) {
+      Trace.info("No ongoing decisions found");
+    }
   }
 
   private void connectRM()
@@ -148,7 +160,8 @@ public class MiddleWare extends ResourceManager implements IMiddleWare {
       throw new InvalidTransactionException(txnId);
     }
 
-    voteRequest(txnId);
+    boolean agreement = voteRequest(txnId);
+    sendDecision(txnId, agreement);
 
     // Remove transaction from time-to-live
     removeTime(txnId);
@@ -416,93 +429,46 @@ public class MiddleWare extends ResourceManager implements IMiddleWare {
   }
 
   /**
-   * 2 Phase commit
+   * 2 Phase Commit
+   *
    */
+
   public boolean voteRequest(int txnID) throws RemoteException {
     try {
       this.voteReply(txnID);
-    } catch (Exception e) {
-      e.printStackTrace();
-      Trace.info("Middleware failed");
-      return false;
-    }
-
-    try {
       carRM.voteReply(txnID);
-    } catch (Exception e) {
-      try {
-        this.rollback(txnID);
-      } catch (Exception e1) {
-        Trace.info("Middleware Failure");
-      }
-      return false;
-    }
-
-    try {
       flightRM.voteReply(txnID);
-    } catch (Exception e) {
-      try {
-        this.rollback(txnID);
-      } catch (Exception e1) {
-        Trace.info("Middleware Failure");
-      }
-
-      try {
-        carRM.rollback(txnID);
-      } catch (Exception e1) {
-        Trace.info("Car Failure");
-      }
-      return false;
-    }
-
-    try {
       hotelRM.voteReply(txnID);
-    } catch (Exception e) {
-      try {
-        this.rollback(txnID);
-      } catch (Exception e1) {
-        Trace.info("Middleware Failure");
-      }
-
-      try {
-        carRM.rollback(txnID);
-      } catch (Exception e1) {
-        Trace.info("Car Failure");
-      }
-
-      try {
-        flightRM.rollback(txnID);
-      } catch (Exception e1) {
-        Trace.info("Flight Failure");
-      }
-
+    } catch (RemoteException e) {
+      Trace.error("VoteRequest: one of the resource managers is not available");
       return false;
     }
-
-    try {
-      super.commit(txnID);
-    } catch (Exception e) {
-      Trace.info("Middleware Failure");
-    }
-
-    try {
-      carRM.commit(txnID);
-    } catch (Exception e) {
-      Trace.info("Car Failure");
-    }
-
-    try {
-      flightRM.commit(txnID);
-    } catch (Exception e) {
-      Trace.info("Flight Failure");
-    }
-
-    try {
-      hotelRM.commit(txnID);
-    } catch (Exception e) {
-      Trace.info("Htoel Failure");
-    }
-
     return true;
+  }
+
+  public void sendDecision(int txnID, boolean commit) {
+    DiskManager.logDecision(txnID, commit);
+
+    boolean global_ack = false;
+    while(!global_ack) {
+      try {
+        this.recvDecision(txnID, commit);
+        carRM.recvDecision(txnID, commit);
+        flightRM.recvDecision(txnID, commit);
+        hotelRM.recvDecision(txnID, commit);
+        global_ack = true;
+      } catch (RemoteException e) {
+        Trace.error("Decision: One of the resource managers is not available");
+
+        // Wait some time for RM to come back online
+        try {
+          Thread.sleep(1000);
+        } catch (InterruptedException e1) {
+          e1.printStackTrace();
+        }
+      }
+    }
+
+    DiskManager.deleteDecision(commit);
   }
 }

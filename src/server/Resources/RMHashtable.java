@@ -14,9 +14,10 @@ public class RMHashtable extends Hashtable {
 
   public RMHashtable() {
     super();
+    wal = false;
   }
 
-  public int version;
+  public boolean wal;
 
   public String toString() {
     String s = "--- BEGIN RMHashtable ---\n";
