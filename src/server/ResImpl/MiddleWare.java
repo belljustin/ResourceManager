@@ -433,6 +433,16 @@ public class MiddleWare extends ResourceManager implements IMiddleWare {
    *
    */
 
+  /**
+   * Requests a vote from all RMs
+   *
+   * If any RM fails to reply to a vote request, the method returns false.
+   * Otherwise the voteRequest was successful and returns true.
+   *
+   * @param txnID
+   * @return
+   * @throws RemoteException
+   */
   public boolean voteRequest(int txnID) throws RemoteException {
     try {
       this.voteReply(txnID);
@@ -446,6 +456,16 @@ public class MiddleWare extends ResourceManager implements IMiddleWare {
     return true;
   }
 
+  /**
+   * Sends the decision as recieved from a vote request.
+   *
+   * First it logs that it has started making a decision to disk.
+   * Then it repeatedly broadcasts the decision to all RMs until it is successful with all of them.
+   * Finally, it removes it's decision from disk.
+   *
+   * @param txnID
+   * @param commit
+   */
   public void sendDecision(int txnID, boolean commit) {
     DiskManager.logDecision(txnID, commit);
 

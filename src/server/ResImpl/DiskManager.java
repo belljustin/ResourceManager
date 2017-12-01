@@ -42,9 +42,6 @@ public abstract class DiskManager implements IResourceManager {
   /**
    * Writes a given hashtable to the .ser file specified by name
    *
-   * The version is extracted from the hashtable to identify which version of the file it should be
-   * written to, A or B.
-   *
    * @param fname file name of .ser
    * @param ht hashtable to be written
    */
