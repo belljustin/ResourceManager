@@ -1,4 +1,4 @@
-java -classpath "$PROJECTPATH/bin/" \
-  -Djava.security.policy="$PROJECTPATH/java.policy" \
-  -Djava.rmi.server.codebase="file:$PROJECTPATH/bin/" \
+java -classpath "../bin/" \
+  -Djava.security.policy="../java.policy" \
+  -Djava.rmi.server.codebase="file:../../bin/" \
   server.ResImpl.MiddleWare 1099

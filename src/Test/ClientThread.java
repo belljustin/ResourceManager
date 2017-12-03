@@ -4,7 +4,7 @@ import LockManager.DeadlockException;
 import java.rmi.RemoteException;
 import java.util.Random;
 import java.util.Vector;
-import server.ResImpl.InvalidTransactionException;
+import server.Transactions.InvalidTransactionException;
 import server.ResInterface.IMiddleWare;
 
 public class ClientThread implements Runnable {

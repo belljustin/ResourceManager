@@ -5,44 +5,46 @@
 package server.ResImpl;
 
 import LockManager.DeadlockException;
-import LockManager.LockManager;
 import java.rmi.RemoteException;
 import java.util.Calendar;
 import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 import server.ResInterface.IResourceManager;
 import server.Resources.Customer;
 import server.Resources.RMHashtable;
 import server.Resources.RMItem;
 import server.Resources.ReservableItem;
 import server.Resources.ReservedItem;
+import server.Transactions.InvalidTransactionException;
+import server.Transactions.TransactionManager;
+import server.Transactions.WalDoesNotExistException;
+import server.Transactions.DiskManager;
 
 public abstract class ResourceManager implements IResourceManager {
 
-  private RMHashtable m_itemHT = new RMHashtable();
+  TransactionManager tm;
+  RMHashtable m_itemHT;
 
-  private HashMap<Integer, RMHashtable> TxnWrites = new HashMap<Integer, RMHashtable>();
-  private HashMap<Integer, HashSet> TxnDeletes = new HashMap<Integer, HashSet>();
-  private LockManager lm = new LockManager();
-
-  int port;
   private String name;
+  int port;
 
-  private AtomicInteger txnCounter = new AtomicInteger(1);
-
-
-  public ResourceManager(String name) throws RemoteException {
+  public ResourceManager(String name, boolean ttl) throws RemoteException {
     this.name = name;
+    this.m_itemHT = restoreHT();
+    this.tm = new TransactionManager(ttl);
+  }
 
-    // Restore hashtable from disk if available
-    RMHashtable restoredHT = DiskManager.restore(name);
-    if (restoredHT != null) {
-      m_itemHT = restoredHT;
-    }
-    DiskManager.writeHT(name + "_A.ser", m_itemHT);
+  /**
+   * Return hashtable from disk if available
+   */
+  public RMHashtable restoreHT() {
+    RMHashtable ht = DiskManager.restore(name);
+    if (ht != null)
+      return ht;
+
+    // Create a new hashtable and write it to disk
+    ht = new RMHashtable();
+    DiskManager.writeHT(name + "_A.ser", ht);
+    return ht;
   }
 
   void parseArgs(String args[]) throws IllegalArgumentException {
@@ -52,34 +54,51 @@ public abstract class ResourceManager implements IResourceManager {
     }
   }
 
+  /**
+   * Starts a new transaction with the given Id.
+   *
+   * @return txnId
+   */
+  public int start(int txnId) throws RemoteException {
+    return tm.start(txnId);
+  }
+
+  /**
+   * Starts a new transaction.
+   *
+   * @return txnId
+   */
+  public int start() throws RemoteException {
+    return tm.start();
+  }
+
+  /**
+   * Abort a transaction given its Id.
+   */
+  public void abort(int txnID) throws RemoteException {
+    try {
+      tm.remove(txnID);
+    } catch (InvalidTransactionException e) {
+      Trace.error("ResourceManager: could not remove transaction that doens't exist");
+    }
+  }
 
   /**
    * Reads a data item.
    *
    * @return rmItem
    */
-  RMItem readData(int txnId, String key) throws DeadlockException {
-    lm.Lock(txnId, key, LockManager.READ);
-
-    // First, check that we haven't removed the value
-    HashSet deletes = TxnDeletes.get(txnId);
-    synchronized (deletes) {
-      if (deletes.contains(key)) {
-        return null;
-      }
-    }
-
-    // Check if we've already written this value in the current transaction
-    RMHashtable writes = TxnWrites.get(txnId);
-    synchronized (writes) {
-      if (writes.containsKey(key)) {
-        return (RMItem) writes.get(key);
-      }
-    }
-
-    // Otherwise, grab it from the official hashtable
-    synchronized (m_itemHT) {
-      return (RMItem) m_itemHT.get(key);
+  RMItem readData(int txnID, String key) throws DeadlockException {
+    try {
+      // Try to read item from transaction read set
+      RMItem item = tm.read(txnID, key);
+      if (item == null)
+        item = (RMItem) m_itemHT.get(key);
+      return item;
+    } catch (IllegalArgumentException e) {
+      Trace.warn(
+          "ResourceManager: requested a read on an object that was deleted in this transaction");
+      return null;
     }
   }
 
@@ -87,23 +106,8 @@ public abstract class ResourceManager implements IResourceManager {
    * Writes a data item.
    */
   void writeData(int txnId, String key, RMItem value) throws DeadlockException {
-    lm.Lock(txnId, key, LockManager.WRITE);
-
-    // Remove from the delete set if it was previously added in the current transaction
-    HashSet<String> deletes = TxnDeletes.get(txnId);
-    synchronized (deletes) {
-      if (deletes.contains(key)) {
-        deletes.remove(key);
-      }
-    }
-
-    // Then write the value to the current transactions write set
-    RMHashtable writes = TxnWrites.get(txnId);
-    synchronized (writes) {
-      writes.put(key, value);
-    }
+    tm.write(txnId, key, value);
   }
-
 
   /**
    * Remove the item out of storage.
@@ -111,16 +115,7 @@ public abstract class ResourceManager implements IResourceManager {
    * @return rmItem
    */
   RMItem removeData(int id, String key) throws DeadlockException {
-    lm.Lock(id, key, LockManager.WRITE);
-
-    RMItem toReturn = readData(id, key);
-
-    HashSet deletes = TxnDeletes.get(id);
-    synchronized (deletes) {
-      deletes.add(key);
-    }
-
-    return toReturn;
+    return tm.delete(id, key);
   }
 
 
@@ -355,77 +350,38 @@ public abstract class ResourceManager implements IResourceManager {
   }
 
   /**
-   * Starts a new transaction with the given Id.
-   *
-   * @return txnId
+   * Cohort Methods
    */
-  public int start(int txnId) throws RemoteException {
-    // Create an empty write set for this txn
-    TxnWrites.put(txnId, new RMHashtable());
-    TxnDeletes.put(txnId, new HashSet<String>());
-    return txnId;
-  }
 
   /**
-   * Starts a new transaction.
-   *
-   * @return txnId
-   */
-  public int start() throws RemoteException {
-    return start(txnCounter.getAndIncrement());
-  }
-
-  /**
-   * Abort a transaction given its Id.
-   */
-  public void abort(int txnID)
-      throws InvalidTransactionException, RemoteException {
-    TxnDeletes.remove(txnID);
-    lm.UnlockAll(txnID);
-  }
-
-  /**
-   * Returns a newly created hashtable with all the txn write & delete sets applied.
-   *
-   * @param txnID
-   * @return new hashtable with applied write set
-   */
-  public RMHashtable applyWrites(int txnID) {
-    RMHashtable copyHt = m_itemHT.deepCopy();
-
-    // Add all the writes from txn write set to shadow HT
-    RMHashtable writes = TxnWrites.get(txnID);
-    Set<String> keys = writes.keySet();
-    for (String key : keys)
-      copyHt.put(key, writes.get(key));
-
-    // Delete all the deletes from txn delete set from official HT
-    HashSet<String> deletes = TxnDeletes.get(txnID);
-    for (String key : deletes)
-      copyHt.remove(key);
-
-    return copyHt;
-  }
-
-  /**
-   * Create a Write Ahead Log from the write set of the given transaction and write it to disk.
+   * Create a Write Ahead Log from the write set of the given transaction and writes it to disk.
    *
    * @param txnID transaction on which to reply vote on
    */
-  public void voteReply(int txnID) throws RemoteException {
-    RMHashtable wal = applyWrites(txnID);
+  public boolean voteReply(int txnID) throws RemoteException {
+    RMHashtable wal;
+
+    try {
+      wal = tm.applyWrites(m_itemHT, txnID);
+    } catch (InvalidTransactionException e) {
+      Trace.warn("ResourceManager: cannot vote on invalid transaction.");
+      return false;
+    }
+
     DiskManager.writeWAL(name, wal);
+    return true;
   }
 
   /**
    * Receives decision for a transaction.
    *
-   * If the decision is to commit, we load the Write Ahead Log (WAL) from disk into memory,
-   * upgrade the WAL to primary log, and delete the old log.
+   * If the decision is to commit, we load the Write Ahead Log (WAL) from disk into memory, upgrade
+   * the WAL to primary log, and delete the old log.
    *
    * If the decision is to abort, we delete the WAL.
    *
-   * Either way, we release all the locks associated with the related transaction.
+   * Either way, we remove the transaction from the Transaction Manaer, releasing all the locks
+   * associated locks in the process.
    *
    * @param txnID transaction identifier
    * @param commit whether or not to commit
@@ -437,11 +393,22 @@ public abstract class ResourceManager implements IResourceManager {
       else
         DiskManager.deleteWAL(name);
 
-      lm.UnlockAll(txnID);
+      tm.remove(txnID);
     } catch (WalDoesNotExistException e) {
       String action = commit ? "commit" : "abort";
       String warning = String.format("%s has already received the decision to %s", name, action);
       Trace.warn(warning);
+    } catch (InvalidTransactionException e) {
+      Trace.warn("Transaction has already been removed. This may have been due to cohort failure");
     }
+  }
+
+  /**
+   * Dummy call to be used as a health-check. No-op
+   *
+   * @return success
+   */
+  public boolean ping() {
+    return true;
   }
 }

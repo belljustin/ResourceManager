@@ -1,35 +1,32 @@
 package server.ResImpl;
 
 import LockManager.DeadlockException;
-import java.io.FileNotFoundException;
 import java.rmi.NotBoundException;
 import java.rmi.RMISecurityManager;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.Iterator;
 import java.util.Vector;
-import java.util.concurrent.ConcurrentHashMap;
 import server.ResInterface.ICarManager;
 import server.ResInterface.IFlightManager;
 import server.ResInterface.IHotelManager;
 import server.ResInterface.IMiddleWare;
+import server.ResInterface.IResourceManager;
 import server.Resources.RMHashtable;
+import server.Transactions.InvalidTransactionException;
+import server.Transactions.Coordinator;
 
 public class MiddleWare extends ResourceManager implements IMiddleWare {
+  public Coordinator coordinator;
+  private HealthManager hm;
 
-  private IFlightManager flightRM;
-  private ICarManager carRM;
-  private IHotelManager hotelRM;
-
-  private static Registry registry;
   private static IMiddleWare mwStub;
+  public static Registry registry;
 
-  private static final int TIME_TO_LIVE_IN_SECONDS = 360;
-  private ConcurrentHashMap<Integer, Date> TimeToLive = new ConcurrentHashMap<>();
+  public IFlightManager flightRM;
+  public IHotelManager hotelRM;
+  public ICarManager carRM;
 
   public static void main(String args[]) throws RemoteException, NotBoundException {
     MiddleWare mw = new MiddleWare();
@@ -47,90 +44,39 @@ public class MiddleWare extends ResourceManager implements IMiddleWare {
       System.setSecurityManager(new RMISecurityManager());
     }
 
-    mw.connectRM();
-
-    Thread t1 = new Thread(new Runnable() {
-      public void run() {
-        while (true) {
-          try {
-            mw.killTransactions();
-            Thread.sleep(1000);
-          } catch (Exception e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-          }
-
-        }
-      }
-    });
-    t1.start();
+    mw.startCoordinator();
+    mw.coordinator.restoreDecision(); // Check if there was an ongoing decision
   }
 
   public MiddleWare() throws RemoteException {
-    super("PG12MiddleWare");
-
-    // Check if there were any ongoing decisions that still need to be broadcasted
-    try {
-      int txnID = DiskManager.readDecision();
-      if (txnID < 0)
-        sendDecision(-txnID, false);
-      else
-        sendDecision(txnID, true);
-    } catch (FileNotFoundException e) {
-      Trace.info("No ongoing decisions found");
-    }
+    super("PG12MiddleWare", true);
+    this.hm = new HealthManager(this);
   }
 
-  private void connectRM()
-      throws IllegalStateException, RemoteException, NotBoundException {
-    if (registry == null) {
+  private void startCoordinator() throws NotBoundException, RemoteException {
+    if (registry == null)
       throw new IllegalStateException("Not connected to any registry");
+
+    try {
+      flightRM = (IFlightManager) registry.lookup("PG12FlightRM");
+      hotelRM = (IHotelManager) registry.lookup("PG12HotelRM");
+      carRM = (ICarManager) registry.lookup("PG12CarRM");
+
+      // Just because they are in the registry doesn't mean they're live
+      // Do health pings to check
+      flightRM.ping();
+      hotelRM.ping();
+      carRM.ping();
+
+      Trace.info("Successfully bound to all RMs");
+      hm.start(); // Starts a health manager that periodically checks for the liveness of cohorts
+    } catch (NotBoundException|RemoteException e) {
+      Trace.error("Could not bind to RMs");
+      hm.start();
     }
 
-    flightRM = (IFlightManager) registry.lookup("PG12FlightRM");
-    carRM = (ICarManager) registry.lookup("PG12CarRM");
-    hotelRM = (IHotelManager) registry.lookup("PG12HotelRM");
-
-    Trace.info("Succesfully bound to Flight, Car, and Hotel RMs");
-  }
-
-  /**
-   * Time-To-Live Mechanism
-   */
-
-  private void startTime(int txnID) {
-    Calendar now = Calendar.getInstance();
-    now.add(Calendar.SECOND, TIME_TO_LIVE_IN_SECONDS);
-    Date timeToAdd = now.getTime();
-    TimeToLive.put(txnID, timeToAdd);
-    Trace.info("Added txnId " + txnID + " to TTL");
-  }
-
-  private void addTime(int txnID) {
-    if (TimeToLive.get(txnID) != null) {
-      startTime(txnID);
-    } else {
-      Trace.error("Transaction does not exist!");
-    }
-  }
-
-  private void removeTime(int txnID) {
-    TimeToLive.remove(txnID);
-  }
-
-  private void killTransactions() throws InvalidTransactionException, RemoteException {
-    Iterator it = TimeToLive.entrySet().iterator();
-    while (it.hasNext()) {
-      Date currentTime = new Date();
-      ConcurrentHashMap.Entry pair = (ConcurrentHashMap.Entry) it.next();
-      int compare = currentTime.compareTo((Date) pair.getValue());
-      if (compare > 0) {
-        int txnIDtoKill = (int) pair.getKey();
-        Trace.info("Transaction " + txnIDtoKill + " timed out");
-        abort(txnIDtoKill);
-        it.remove();
-      }
-    }
+    IResourceManager[] cohorts = {this, flightRM, hotelRM, carRM};
+    coordinator = new Coordinator(cohorts);
   }
 
   /**
@@ -140,58 +86,51 @@ public class MiddleWare extends ResourceManager implements IMiddleWare {
   @Override
   public int start() throws RemoteException {
     int txnId = super.start();
-    startTime(txnId);
 
     // Start the transaction in all the other RMs
     flightRM.start(txnId);
-    carRM.start(txnId);
     hotelRM.start(txnId);
+    carRM.start(txnId);
 
     return txnId;
   }
 
   @Override
-  public boolean commit(int txnId)
-      throws InvalidTransactionException, RemoteException {
-    Trace.info("Removing txnId: " + txnId);
-
-    // Check if the txn exists
-    if (!TimeToLive.containsKey(txnId)) {
-      throw new InvalidTransactionException(txnId);
-    }
-
-    boolean agreement = voteRequest(txnId);
-    sendDecision(txnId, agreement);
-
-    // Remove transaction from time-to-live
-    removeTime(txnId);
-    return true;
+  public boolean commit(int txnId) throws InvalidTransactionException, RemoteException {
+    boolean agreement = coordinator.voteRequest(txnId);
+    coordinator.sendDecision(txnId, agreement);
+    return agreement;
   }
 
   @Override
-  public void abort(int txnId)
-      throws InvalidTransactionException, RemoteException {
-    Trace.info("Aborting txnId: " + txnId);
-
-    // Check if the txn exists
-    if (!TimeToLive.containsKey(txnId)) {
-      Trace.info("txnId " + txnId + " does not exist");
-    }
+  public void abort(int txnId) throws RemoteException {
+    super.abort(txnId);
 
     // Commit the transaction in all the other RMs
-    flightRM.abort(txnId);
-    carRM.abort(txnId);
-    hotelRM.abort(txnId);
+    try {
+      flightRM.abort(txnId);
+    } catch (RemoteException e) {
+      Trace.error("Failed to abort transaction at flightRM");
+    }
 
-    super.abort(txnId);
-    removeTime(txnId);
+    try {
+      hotelRM.abort(txnId);
+    } catch (RemoteException e) {
+      Trace.error("Failed to abort transaction at hotelRM");
+    }
+
+    try {
+      carRM.abort(txnId);
+    } catch (RemoteException e) {
+      Trace.error("Failed to abort transaction at carRM");
+    }
   }
 
 
   // Adds flight reservation to this customer.
   public boolean reserveFlight(int id, int customerID, int flightNum)
       throws RemoteException, DeadlockException {
-    addTime(id);
+    tm.addTime(id);
     return flightRM.reserveFlight(id, customerID, flightNum);
   }
 
@@ -199,13 +138,13 @@ public class MiddleWare extends ResourceManager implements IMiddleWare {
   //  NOTE: if flightPrice <= 0 and the flight already exists, it maintains its current price
   public boolean addFlight(int id, int flightNum, int flightSeats, int flightPrice)
       throws RemoteException, DeadlockException {
-    addTime(id);
+    tm.addTime(id);
     return flightRM.addFlight(id, flightNum, flightSeats, flightPrice);
 
   }
 
   public boolean deleteFlight(int id, int flightNum) throws RemoteException, DeadlockException {
-    addTime(id);
+    tm.addTime(id);
     return flightRM.deleteFlight(id, flightNum);
   }
 
@@ -213,14 +152,14 @@ public class MiddleWare extends ResourceManager implements IMiddleWare {
   //  NOTE: if price <= 0 and the room location already exists, it maintains its current price
   public boolean addRooms(int id, String location, int count, int price)
       throws RemoteException, DeadlockException {
-    addTime(id);
+    tm.addTime(id);
     return hotelRM.addRooms(id, location, count, price);
   }
 
   // Delete rooms from a location
   public boolean deleteRooms(int id, String location)
       throws RemoteException, DeadlockException {
-    addTime(id);
+    tm.addTime(id);
     return hotelRM.deleteRooms(id, location);
   }
 
@@ -228,28 +167,28 @@ public class MiddleWare extends ResourceManager implements IMiddleWare {
   //  NOTE: if price <= 0 and the location already exists, it maintains its current price
   public boolean addCars(int id, String location, int count, int price)
       throws RemoteException, DeadlockException {
-    addTime(id);
+    tm.addTime(id);
     return carRM.addCars(id, location, count, price);
   }
 
   // Delete cars from a location
   public boolean deleteCars(int id, String location)
       throws RemoteException, DeadlockException {
-    addTime(id);
+    tm.addTime(id);
     return carRM.deleteCars(id, location);
   }
 
   // Returns the number of empty seats on this flight
   public int queryFlight(int id, int flightNum)
       throws RemoteException, DeadlockException {
-    addTime(id);
+    tm.addTime(id);
     return flightRM.queryFlight(id, flightNum);
   }
 
   // Returns price of this flight
   public int queryFlightPrice(int id, int flightNum)
       throws RemoteException, DeadlockException {
-    addTime(id);
+    tm.addTime(id);
     return flightRM.queryFlightPrice(id, flightNum);
   }
 
@@ -257,31 +196,28 @@ public class MiddleWare extends ResourceManager implements IMiddleWare {
   // Returns the number of rooms available at a location
   public int queryRooms(int id, String location)
       throws RemoteException, DeadlockException {
-    addTime(id);
+    tm.addTime(id);
     return hotelRM.queryRooms(id, location);
   }
 
 
   // Returns room price at this location
-  public int queryRoomsPrice(int id, String location)
-      throws RemoteException, DeadlockException {
-    addTime(id);
+  public int queryRoomsPrice(int id, String location) throws RemoteException, DeadlockException {
+    tm.addTime(id);
     return hotelRM.queryRoomsPrice(id, location);
   }
 
 
   // Returns the number of cars available at a location
-  public int queryCars(int id, String location)
-      throws RemoteException, DeadlockException {
-    addTime(id);
+  public int queryCars(int id, String location) throws RemoteException, DeadlockException {
+    tm.addTime(id);
     return carRM.queryCars(id, location);
   }
 
 
   // Returns price of cars at this location
-  public int queryCarsPrice(int id, String location)
-      throws RemoteException, DeadlockException {
-    addTime(id);
+  public int queryCarsPrice(int id, String location) throws RemoteException, DeadlockException {
+    tm.addTime(id);
     return carRM.queryCarsPrice(id, location);
   }
 
@@ -289,17 +225,15 @@ public class MiddleWare extends ResourceManager implements IMiddleWare {
   //  customer doesn't exist. Returns empty RMHashtable if customer exists but has no
   //  reservations.
   @Override
-  public RMHashtable getCustomerReservations(int id, int customerID)
-      throws RemoteException, DeadlockException {
-    addTime(id);
+  public RMHashtable getCustomerReservations(int id, int customerID) throws RemoteException, DeadlockException {
+    tm.addTime(id);
     return super.getCustomerReservations(id, customerID);
   }
 
   // return a bill
   @Override
-  public String queryCustomerInfo(int id, int customerID)
-      throws RemoteException, DeadlockException {
-    addTime(id);
+  public String queryCustomerInfo(int id, int customerID) throws RemoteException, DeadlockException {
+    tm.addTime(id);
     String toReturn;
     String A = hotelRM.queryCustomerInfo(id, customerID);
     String B = carRM.queryCustomerInfo(id, customerID);
@@ -324,7 +258,7 @@ public class MiddleWare extends ResourceManager implements IMiddleWare {
   @Override
   public synchronized int newCustomer(int id)
       throws RemoteException, DeadlockException {
-    addTime(id);
+    tm.addTime(id);
     int cid = super.newCustomer(id);
     hotelRM.newCustomer(id, cid);
     carRM.newCustomer(id, cid);
@@ -336,7 +270,7 @@ public class MiddleWare extends ResourceManager implements IMiddleWare {
   @Override
   public synchronized boolean newCustomer(int id, int customerID)
       throws RemoteException, DeadlockException {
-    addTime(id);
+    tm.addTime(id);
     boolean success = super.newCustomer(id, customerID);
 
     if (!success) {
@@ -357,7 +291,7 @@ public class MiddleWare extends ResourceManager implements IMiddleWare {
   @Override
   public synchronized boolean deleteCustomer(int id, int customerID)
       throws RemoteException, DeadlockException {
-    addTime(id);
+    tm.addTime(id);
     boolean success = super.deleteCustomer(id, customerID);
 
     if (!success) {
@@ -375,7 +309,7 @@ public class MiddleWare extends ResourceManager implements IMiddleWare {
   // Adds car reservation to this customer.
   public boolean reserveCar(int id, int customerID, String location)
       throws RemoteException, DeadlockException {
-    addTime(id);
+    tm.addTime(id);
     return carRM.reserveCar(id, customerID, location);
   }
 
@@ -383,7 +317,7 @@ public class MiddleWare extends ResourceManager implements IMiddleWare {
   // Adds room reservation to this customer.
   public boolean reserveRoom(int id, int customerID, String location)
       throws RemoteException, DeadlockException {
-    addTime(id);
+    tm.addTime(id);
     return hotelRM.reserveRoom(id, customerID, location);
   }
 
@@ -392,7 +326,7 @@ public class MiddleWare extends ResourceManager implements IMiddleWare {
   public boolean itinerary(int id, int customer, Vector flightNumbers, String location, boolean Car,
       boolean Room)
       throws RemoteException, DeadlockException {
-    addTime(id);
+    tm.addTime(id);
     boolean flag = true;
     boolean carFlag = true;
     boolean hotelFlag = true;
@@ -413,82 +347,5 @@ public class MiddleWare extends ResourceManager implements IMiddleWare {
     }
 
     return (flag && carFlag && hotelFlag);
-  }
-
-  public boolean shutdown() throws RemoteException {
-    while (!TimeToLive.isEmpty())
-
-    {
-      hotelRM.shutdown();
-    }
-    carRM.shutdown();
-    hotelRM.shutdown();
-
-    UnicastRemoteObject.unexportObject(mwStub, true);
-    return true;
-  }
-
-  /**
-   * 2 Phase Commit
-   *
-   */
-
-  /**
-   * Requests a vote from all RMs
-   *
-   * If any RM fails to reply to a vote request, the method returns false.
-   * Otherwise the voteRequest was successful and returns true.
-   *
-   * @param txnID
-   * @return
-   * @throws RemoteException
-   */
-  public boolean voteRequest(int txnID) throws RemoteException {
-    try {
-      this.voteReply(txnID);
-      carRM.voteReply(txnID);
-      flightRM.voteReply(txnID);
-      hotelRM.voteReply(txnID);
-    } catch (RemoteException e) {
-      Trace.error("VoteRequest: one of the resource managers is not available");
-      return false;
-    }
-    return true;
-  }
-
-  /**
-   * Sends the decision as recieved from a vote request.
-   *
-   * First it logs that it has started making a decision to disk.
-   * Then it repeatedly broadcasts the decision to all RMs until it is successful with all of them.
-   * Finally, it removes it's decision from disk.
-   *
-   * @param txnID
-   * @param commit
-   */
-  public void sendDecision(int txnID, boolean commit) {
-    DiskManager.logDecision(txnID, commit);
-
-    boolean global_ack = false;
-    while(!global_ack) {
-      try {
-        this.recvDecision(txnID, commit);
-        carRM.recvDecision(txnID, commit);
-        flightRM.recvDecision(txnID, commit);
-        hotelRM.recvDecision(txnID, commit);
-        global_ack = true;
-      } catch (RemoteException e) {
-        Trace.error("Decision: One of the resource managers is not available");
-
-        // Wait some time for RM to come back online
-        try {
-          Thread.sleep(1000);
-        } catch (InterruptedException e1) {
-          e1.printStackTrace();
-        }
-      }
-    }
-
-    DiskManager.deleteDecision(commit);
   }
 }

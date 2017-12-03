@@ -2,7 +2,7 @@
 // adapted from Kevin T. Manley
 // CSE 593
 //
-package server.ResImpl;
+package server.Transactions;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -17,6 +17,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import server.ResInterface.IResourceManager;
 import server.Resources.RMHashtable;
+import server.Transactions.WalDoesNotExistException;
 
 public abstract class DiskManager implements IResourceManager {
   /**
@@ -206,6 +207,7 @@ public abstract class DiskManager implements IResourceManager {
     try {
       BufferedWriter bw = new BufferedWriter(new FileWriter(fname));
       bw.write(txnID);
+      bw.close();
     } catch (IOException e) {
       throw new IllegalStateException("Can't write decision log");
     }

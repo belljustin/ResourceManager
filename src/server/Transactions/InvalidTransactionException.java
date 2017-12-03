@@ -1,4 +1,4 @@
-package server.ResImpl;
+package server.Transactions;
 
 public class InvalidTransactionException extends Exception {
 

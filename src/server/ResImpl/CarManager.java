@@ -38,7 +38,7 @@ public class CarManager extends ResourceManager implements ICarManager {
   }
 
   public CarManager() throws RemoteException {
-    super("PG12CarRM");
+    super("PG12CarRM", false);
   }
 
   /**
