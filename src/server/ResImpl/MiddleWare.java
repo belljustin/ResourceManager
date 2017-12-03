@@ -96,7 +96,7 @@ public class MiddleWare extends ResourceManager implements IMiddleWare {
   }
 
   @Override
-  public boolean commit(int txnId) throws InvalidTransactionException, RemoteException {
+  public synchronized boolean commit(int txnId) throws InvalidTransactionException, RemoteException {
     boolean agreement = coordinator.voteRequest(txnId);
     coordinator.sendDecision(txnId, agreement);
     return agreement;
