@@ -35,4 +35,6 @@ public interface IResourceManager extends Remote {
   public void recvDecision(int txnID, boolean commit) throws RemoteException;
 
   public boolean ping() throws RemoteException;
+
+  public void clear() throws RemoteException;
 }

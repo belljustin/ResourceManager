@@ -1,0 +1,2 @@
+rm **/*ser
+rm **/*log

@@ -392,12 +392,14 @@ public abstract class ResourceManager implements IResourceManager {
         m_itemHT = DiskManager.getWalAndDelete(name);
       else
         DiskManager.deleteWAL(name);
-
-      tm.remove(txnID);
     } catch (WalDoesNotExistException e) {
       String action = commit ? "commit" : "abort";
       String warning = String.format("%s has already received the decision to %s", name, action);
       Trace.warn(warning);
+    }
+
+    try{
+      tm.remove(txnID);
     } catch (InvalidTransactionException e) {
       Trace.warn("Transaction has already been removed. This may have been due to cohort failure");
     }
@@ -410,5 +412,12 @@ public abstract class ResourceManager implements IResourceManager {
    */
   public boolean ping() {
     return true;
+  }
+
+  /**
+   * Removes all transactions
+   */
+  public void clear() {
+    tm.clear();
   }
 }

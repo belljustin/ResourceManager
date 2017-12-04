@@ -31,6 +31,15 @@ public class Coordinator {
     } catch (FileNotFoundException e) {
       Trace.info("No ongoing decisions found");
     }
+
+    // Clear all transactions
+    for (IResourceManager c : cohorts) {
+      try {
+        c.clear();
+      } catch (RemoteException e) {
+        Trace.warn("RM already down. No need to clear transactions.");
+      }
+    }
   }
 
   /**
@@ -45,10 +54,28 @@ public class Coordinator {
    */
   public boolean voteRequest(int txnID) throws RemoteException {
     for (IResourceManager cohort : cohorts) {
-      if (!cohort.voteReply(txnID))
-        return false;
+      // TODO: for testing purposes. Allows us time to kill a process before voteRequest complete
+      try {
+        Thread.sleep(1000); // TODO: for testing purposes
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+
+      Trace.info("Requesting vote");
+      boolean vote = true;
+      try {
+        if (!cohort.voteReply(txnID)) { // If one votes abort, return false immediately
+          Trace.warn("A cohort voted to abort the transaction");
+          return false;
+        }
+      } catch (RemoteException e) {
+        Trace.warn("A cohort voted to abort the transaction. It has failed.");
+        return false; // If one of the cohorts are unavailable, return false
+      }
     }
 
+    // Return true if all cohorts vote true
+    Trace.info("Recieved commit vote from all cohorts");
     return true;
   }
 

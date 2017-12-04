@@ -9,6 +9,8 @@ import LockManager.DeadlockException;
 import java.rmi.RemoteException;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicInteger;
 import server.Resources.RMHashtable;
 import server.Resources.RMItem;
@@ -147,6 +149,26 @@ public class TransactionManager {
       copyHt.remove(key);
 
     return copyHt;
+  }
+
+  public void clear() {
+    Iterator<HashMap.Entry<Integer, Transaction>> it;
+    HashMap.Entry<Integer, Transaction> txn;
+
+    it = transactions.entrySet()
+        .iterator();
+
+    // loop through the set of TTLs
+    while (it.hasNext()) {
+      txn = it.next();
+      try {
+        remove(txn.getKey());
+      } catch (InvalidTransactionException e) {
+        e.printStackTrace();
+      } catch (RemoteException e) {
+        e.printStackTrace();
+      }
+    }
   }
 
   public void addTime(int txnID) {
