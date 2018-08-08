@@ -11,3 +11,6 @@ java.policy
 .idea/
 *.iml
 *.iws
+
+# Serialized files
+*.ser

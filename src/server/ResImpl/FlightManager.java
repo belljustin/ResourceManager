@@ -38,6 +38,7 @@ public class FlightManager extends ResourceManager implements IFlightManager {
   }
 
   public FlightManager() throws RemoteException {
+    super("PG12FlightRM", false);
   }
 
   /**

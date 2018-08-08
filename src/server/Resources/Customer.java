@@ -83,18 +83,18 @@ public class Customer extends RMItem {
   private RMHashtable m_Reservations;
 
   public Customer deepClone() {
-	try {
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		ObjectOutputStream oos = new ObjectOutputStream(baos);
-		oos.writeObject(this);
+    try {
+      ByteArrayOutputStream baos = new ByteArrayOutputStream();
+      ObjectOutputStream oos = new ObjectOutputStream(baos);
+      oos.writeObject(this);
 
-		ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
-		ObjectInputStream ois = new ObjectInputStream(bais);
-		return (Customer) ois.readObject();
-	} catch (IOException e) {
-		return null;
-	} catch (ClassNotFoundException e) {
-		return null;
-	}
+      ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
+      ObjectInputStream ois = new ObjectInputStream(bais);
+      return (Customer) ois.readObject();
+    } catch (IOException e) {
+      return null;
+    } catch (ClassNotFoundException e) {
+      return null;
+    }
   }
 }
